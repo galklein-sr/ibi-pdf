@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html data-theme="base44" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport">
+    <meta content="#000000" name="theme-color">
+    <meta content="yes" name="mobile-web-app-capable">
+    <meta content="black" name="apple-mobile-web-app-status-bar-style">
+   <title>
+    Financial Navigator
+   </title>
+   <meta content="website" property="og:type">
+    <meta content="https://app.base44.com" property="og:url">
+     <meta content="Financial Navigator" property="og:title">
+      <meta content="Your AI-powered guide to understanding complex financial reports and making informed decisions." property="og:description">
+      <meta content="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/df6dd5531_logo.png" property="og:image">
+      <meta content="summary_large_image" property="twitter:card">
+      <meta content="https://app.base44.com" property="twitter:url">
+      <meta content="Financial Navigator" property="twitter:title">
+      <meta content="Your AI-powered guide to understanding complex financial reports and making informed decisions." property="twitter:description">
+      <meta content="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/df6dd5531_logo.png" property="twitter:image">
+
+ <body>
+  <div id="root"><div class="font-sans"><div><div role="region" aria-label="Notifications (F8)" tabindex="-1" style="pointer-events: none;"><ol tabindex="-1" class="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]"></ol></div></div><div><section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></section></div><div><div style="position: fixed; z-index: 9999; inset: 16px; pointer-events: none;"></div></div><div><div style="position: fixed; z-index: 9999; inset: 16px; pointer-events: none;"></div></div><div><section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></section></div><div><div style="position: fixed; z-index: 9999; inset: 16px; pointer-events: none;"></div></div><div class="min-h-screen w-full relative app-preview"><div dir="ltr" class="fixed z-50 bottom-4 right-4 flex items-center gap-2 bg-black p-2.5 rounded-md shadow-lg cursor-pointer transition-all hover:shadow-xl border border-neutral-800"><img src="./Financial Navigator_files/logo_v3.png" alt="base44" class="w-5 h-5"><span class="whitespace-nowrap text-xs text-neutral-200"><span class="text-neutral-400 font-medium">Edit with </span><span class="text-white font-bold">base44</span></span><button class="p-0.5 rounded-full hover:bg-neutral-700 transition-colors" aria-label="Close badge"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x w-3.5 h-3.5 text-neutral-400"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="flex flex-col w-full h-full" id="app-demo"><div class="bg-white w-full min-h-full overflow-auto"><div id="component-preview-container"><div data-filename="pages/FinancialReport" data-linenumber="5" data-visual-selector-id="pages/FinancialReport5" class="print-page" dir="rtl"><style data-filename="pages/FinancialReport" data-linenumber="7" data-visual-selector-id="pages/FinancialReport7">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        .print-page {
+          width: 297mm;
+          height: 210mm;
+          margin: 0;
+          padding: 0;
+          background: linear-gradient(135deg, #2C5F7A 0%, #4A90B8 50%, #6FB3D9 100%);
+          position: relative;
+          overflow: hidden;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        @media print {
+          .print-page {
+            width: 100%;
+            height: 100vh;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+          
+          * {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+        }
+        
+        .logo {
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          width: 120px;
+          height: 60px;
+          background: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          clip-path: polygon(15% 0, 100% 0, 100% 100%, 15% 100%, 0 50%);
+          font-weight: 700;
+          font-size: 14px;
+          color: #2C5F7A;
+        }
+        
+        .main-content {
+          display: flex;
+          height: 100%;
+          padding: 40px;
+          gap: 60px;
+        }
+        
+        .right-section {
+          width: 400px;
+          background: rgba(44, 95, 122, 0.9);
+          border-radius: 20px;
+          padding: 40px;
+          margin-top: 60px;
+          height: fit-content;
+        }
+        
+        .left-section {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: 1fr 1fr;
+          gap: 40px;
+          padding-top: 80px;
+        }
+        
+        .circle-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+        
+        .circle {
+          width: 180px;
+          height: 180px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 20px;
+          position: relative;
+        }
+        
+        .circle-navy {
+          background: #1B365D;
+        }
+        
+        .circle-blue {
+          background: #2E8BC0;
+        }
+        
+        .circle-steel {
+          background: #4A5568;
+        }
+        
+        .circle-teal {
+          background: #2C5F7A;
+        }
+        
+        .circle-percentage {
+          font-size: 36px;
+          font-weight: 700;
+          color: white;
+        }
+        
+        .circle-label {
+          color: white;
+          font-size: 16px;
+          font-weight: 500;
+          line-height: 1.4;
+          max-width: 200px;
+        }
+        
+        .sidebar-title {
+          color: white;
+          font-size: 32px;
+          font-weight: 700;
+          margin-bottom: 30px;
+          text-align: center;
+        }
+        
+        .sidebar-subtitle {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 14px;
+          line-height: 1.6;
+          margin-bottom: 30px;
+          text-align: center;
+        }
+        
+        .percentage-box {
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 12px;
+          padding: 20px;
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        
+        .percentage-label {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 12px;
+          margin-bottom: 8px;
+        }
+        
+        .percentage-value {
+          color: white;
+          font-size: 48px;
+          font-weight: 700;
+        }
+        
+        .comparison-section {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 20px;
+        }
+        
+        .comparison-title {
+          color: white;
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 15px;
+        }
+        
+        .comparison-items {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        
+        .comparison-item {
+          text-align: center;
+        }
+        
+        .comparison-item-label {
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 12px;
+          margin-bottom: 4px;
+        }
+        
+        .comparison-item-value {
+          color: white;
+          font-size: 14px;
+          font-weight: 600;
+        }
+        
+        .progress-bars {
+          space-y: 12px;
+        }
+        
+        .progress-bar {
+          margin-bottom: 12px;
+        }
+        
+        .progress-bar-label {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 4px;
+        }
+        
+        .progress-bar-text {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 12px;
+        }
+        
+        .progress-bar-bg {
+          height: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        
+        .progress-bar-fill {
+          height: 100%;
+          background: #2E8BC0;
+          border-radius: 4px;
+        }
+        
+        .decorative-curves {
+          position: absolute;
+          left: 380px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 100px;
+          height: 300px;
+          opacity: 0.3;
+        }
+        
+        .curve {
+          position: absolute;
+          border: 2px solid rgba(255, 255, 255, 0.4);
+          border-radius: 50%;
+          border-right: none;
+          border-bottom: none;
+        }
+        
+        .curve-1 {
+          width: 80px;
+          height: 200px;
+          top: 0;
+          left: 0;
+        }
+        
+        .curve-2 {
+          width: 60px;
+          height: 150px;
+          top: 25px;
+          left: 20px;
+        }
+        
+        .curve-3 {
+          width: 40px;
+          height: 100px;
+          top: 50px;
+          left: 40px;
+        }
+      </style><div data-filename="pages/FinancialReport" data-linenumber="268" data-visual-selector-id="pages/FinancialReport268" class="logo"><div data-filename="pages/FinancialReport" data-linenumber="269" data-visual-selector-id="pages/FinancialReport269"><div data-filename="pages/FinancialReport" data-linenumber="270" data-visual-selector-id="pages/FinancialReport270" style="font-size: 12px; font-weight: 600;">משרד העורכים</div><div data-filename="pages/FinancialReport" data-linenumber="271" data-visual-selector-id="pages/FinancialReport271" style="font-size: 10px; margin-top: 2px;">רועי וחיה</div></div></div><div data-filename="pages/FinancialReport" data-linenumber="276" data-visual-selector-id="pages/FinancialReport276" class="decorative-curves"><div data-filename="pages/FinancialReport" data-linenumber="277" data-visual-selector-id="pages/FinancialReport277" class="curve curve-1"></div><div data-filename="pages/FinancialReport" data-linenumber="278" data-visual-selector-id="pages/FinancialReport278" class="curve curve-2"></div><div data-filename="pages/FinancialReport" data-linenumber="279" data-visual-selector-id="pages/FinancialReport279" class="curve curve-3"></div></div><div data-filename="pages/FinancialReport" data-linenumber="282" data-visual-selector-id="pages/FinancialReport282" class="main-content"><div data-filename="pages/FinancialReport" data-linenumber="284" data-visual-selector-id="pages/FinancialReport284" class="right-section"><h1 class="sidebar-title">ארם עד 50</h1><p data-filename="pages/FinancialReport" data-linenumber="287" data-visual-selector-id="pages/FinancialReport287" class="sidebar-subtitle">אני בודק הנכסים אמצ'ק מגיעתיות אישור בטחוחי<br data-filename="pages/FinancialReport" data-linenumber="288" data-visual-selector-id="pages/FinancialReport288">במחשבתי המשקף תמונה של המלצה 10מ% מאחד<br data-filename="pages/FinancialReport" data-linenumber="289" data-visual-selector-id="pages/FinancialReport289">ממטעלתי מקבלי אישור לא סוזוב וחווות בעיתתיים</p><div data-filename="pages/FinancialReport" data-linenumber="293" data-visual-selector-id="pages/FinancialReport293" class="percentage-box"><div data-filename="pages/FinancialReport" data-linenumber="294" data-visual-selector-id="pages/FinancialReport294" class="percentage-label">אחוז חוגות בעיתתיים<br data-filename="pages/FinancialReport" data-linenumber="295" data-visual-selector-id="pages/FinancialReport295">מתיק השמאר והלא<br data-filename="pages/FinancialReport" data-linenumber="296" data-visual-selector-id="pages/FinancialReport296">מותר</div><div data-filename="pages/FinancialReport" data-linenumber="299" data-visual-selector-id="pages/FinancialReport299" class="percentage-value">0.00%</div></div><div data-filename="pages/FinancialReport" data-linenumber="302" data-visual-selector-id="pages/FinancialReport302" class="comparison-section"><h3 class="comparison-title">השוואת אשפרי</h3><div data-filename="pages/FinancialReport" data-linenumber="305" data-visual-selector-id="pages/FinancialReport305" class="comparison-items"><div data-filename="pages/FinancialReport" data-linenumber="306" data-visual-selector-id="pages/FinancialReport306" class="comparison-item"><div data-filename="pages/FinancialReport" data-linenumber="307" data-visual-selector-id="pages/FinancialReport307" class="comparison-item-label">נתוני תיק</div><div data-filename="pages/FinancialReport" data-linenumber="308" data-visual-selector-id="pages/FinancialReport308" class="comparison-item-value">נתוני השוואה</div></div></div><div data-filename="pages/FinancialReport" data-linenumber="312" data-visual-selector-id="pages/FinancialReport312" class="progress-bars"><div data-filename="pages/FinancialReport" data-linenumber="313" data-visual-selector-id="pages/FinancialReport313" class="progress-bar"><div data-filename="pages/FinancialReport" data-linenumber="314" data-visual-selector-id="pages/FinancialReport314" class="progress-bar-label"><span data-filename="pages/FinancialReport" data-linenumber="315" data-visual-selector-id="pages/FinancialReport315" class="progress-bar-text">תל</span><span data-filename="pages/FinancialReport" data-linenumber="316" data-visual-selector-id="pages/FinancialReport316" class="progress-bar-text">100.00%</span></div><div data-filename="pages/FinancialReport" data-linenumber="318" data-visual-selector-id="pages/FinancialReport318" class="progress-bar-bg"><div data-filename="pages/FinancialReport" data-linenumber="319" data-visual-selector-id="pages/FinancialReport319" class="progress-bar-fill" style="width: 100%;"></div></div></div><div data-filename="pages/FinancialReport" data-linenumber="323" data-visual-selector-id="pages/FinancialReport323" class="progress-bar"><div data-filename="pages/FinancialReport" data-linenumber="324" data-visual-selector-id="pages/FinancialReport324" class="progress-bar-label"><span data-filename="pages/FinancialReport" data-linenumber="325" data-visual-selector-id="pages/FinancialReport325" class="progress-bar-text"></span><span data-filename="pages/FinancialReport" data-linenumber="326" data-visual-selector-id="pages/FinancialReport326" class="progress-bar-text">100.00%</span></div><div data-filename="pages/FinancialReport" data-linenumber="328" data-visual-selector-id="pages/FinancialReport328" class="progress-bar-bg"><div data-filename="pages/FinancialReport" data-linenumber="329" data-visual-selector-id="pages/FinancialReport329" class="progress-bar-fill" style="width: 100%;"></div></div></div><div data-filename="pages/FinancialReport" data-linenumber="333" data-visual-selector-id="pages/FinancialReport333" class="progress-bar"><div data-filename="pages/FinancialReport" data-linenumber="334" data-visual-selector-id="pages/FinancialReport334" class="progress-bar-label"><span data-filename="pages/FinancialReport" data-linenumber="335" data-visual-selector-id="pages/FinancialReport335" class="progress-bar-text">משקאות</span><span data-filename="pages/FinancialReport" data-linenumber="336" data-visual-selector-id="pages/FinancialReport336" class="progress-bar-text">0.00%</span></div><div data-filename="pages/FinancialReport" data-linenumber="338" data-visual-selector-id="pages/FinancialReport338" class="progress-bar-bg"><div data-filename="pages/FinancialReport" data-linenumber="339" data-visual-selector-id="pages/FinancialReport339" class="progress-bar-fill" style="width: 0%;"></div></div></div><div data-filename="pages/FinancialReport" data-linenumber="343" data-visual-selector-id="pages/FinancialReport343" class="progress-bar"><div data-filename="pages/FinancialReport" data-linenumber="344" data-visual-selector-id="pages/FinancialReport344" class="progress-bar-label"><span data-filename="pages/FinancialReport" data-linenumber="345" data-visual-selector-id="pages/FinancialReport345" class="progress-bar-text"></span><span data-filename="pages/FinancialReport" data-linenumber="346" data-visual-selector-id="pages/FinancialReport346" class="progress-bar-text">0.00%</span></div><div data-filename="pages/FinancialReport" data-linenumber="348" data-visual-selector-id="pages/FinancialReport348" class="progress-bar-bg"><div data-filename="pages/FinancialReport" data-linenumber="349" data-visual-selector-id="pages/FinancialReport349" class="progress-bar-fill" style="width: 0%;"></div></div></div></div></div></div><div data-filename="pages/FinancialReport" data-linenumber="357" data-visual-selector-id="pages/FinancialReport357" class="left-section"><div data-filename="pages/FinancialReport" data-linenumber="358" data-visual-selector-id="pages/FinancialReport358" class="circle-item"><div data-filename="pages/FinancialReport" data-linenumber="359" data-visual-selector-id="pages/FinancialReport359" class="circle circle-navy"><span data-filename="pages/FinancialReport" data-linenumber="360" data-visual-selector-id="pages/FinancialReport360" class="circle-percentage">17.68%</span></div><div data-filename="pages/FinancialReport" data-linenumber="362" data-visual-selector-id="pages/FinancialReport362" class="circle-label">אחוז אישורי שיפוט<br data-filename="pages/FinancialReport" data-linenumber="363" data-visual-selector-id="pages/FinancialReport363">מותר</div></div><div data-filename="pages/FinancialReport" data-linenumber="367" data-visual-selector-id="pages/FinancialReport367" class="circle-item"><div data-filename="pages/FinancialReport" data-linenumber="368" data-visual-selector-id="pages/FinancialReport368" class="circle circle-blue"><span data-filename="pages/FinancialReport" data-linenumber="369" data-visual-selector-id="pages/FinancialReport369" class="circle-percentage">46.87M</span></div><div data-filename="pages/FinancialReport" data-linenumber="371" data-visual-selector-id="pages/FinancialReport371" class="circle-label">שווי נכסים כולל<br data-filename="pages/FinancialReport" data-linenumber="372" data-visual-selector-id="pages/FinancialReport372">תיק הנכסים המלצי נכסי<br data-filename="pages/FinancialReport" data-linenumber="372" data-visual-selector-id="pages/FinancialReport372">לפני הרצונה</div></div><div data-filename="pages/FinancialReport" data-linenumber="376" data-visual-selector-id="pages/FinancialReport376" class="circle-item"><div data-filename="pages/FinancialReport" data-linenumber="377" data-visual-selector-id="pages/FinancialReport377" class="circle circle-teal"><span data-filename="pages/FinancialReport" data-linenumber="378" data-visual-selector-id="pages/FinancialReport378" class="circle-percentage">0.00%</span></div><div data-filename="pages/FinancialReport" data-linenumber="380" data-visual-selector-id="pages/FinancialReport380" class="circle-label">אחוז מסווי תיק</div></div><div data-filename="pages/FinancialReport" data-linenumber="385" data-visual-selector-id="pages/FinancialReport385" class="circle-item"><div data-filename="pages/FinancialReport" data-linenumber="386" data-visual-selector-id="pages/FinancialReport386" class="circle circle-steel"><span data-filename="pages/FinancialReport" data-linenumber="387" data-visual-selector-id="pages/FinancialReport387" class="circle-percentage">9.62</span></div><div data-filename="pages/FinancialReport" data-linenumber="389" data-visual-selector-id="pages/FinancialReport389" class="circle-label">חוב בעיתתי<br data-filename="pages/FinancialReport" data-linenumber="390" data-visual-selector-id="pages/FinancialReport390">שווי החוגות בעיתתיים בהתסכמה<br data-filename="pages/FinancialReport" data-linenumber="390" data-visual-selector-id="pages/FinancialReport390">להוראות משרד האוצר מכלל נכסי<br data-filename="pages/FinancialReport" data-linenumber="390" data-visual-selector-id="pages/FinancialReport390">התיק</div></div></div></div></div></div></div></div></div></div></div>
+ 
+
+<iframe name="__privateStripeMetricsController8550" frameborder="0" allowtransparency="true" scrolling="no" role="presentation" allow="payment *" src="./Financial Navigator_files/m-outer-3437aaddcdf6922d623e172c2d6f9278.html" aria-hidden="true" tabindex="-1" style="border: none !important; margin: 0px !important; padding: 0px !important; width: 1px !important; min-width: 100% !important; overflow: hidden !important; display: block !important; visibility: hidden !important; position: fixed !important; height: 1px !important; pointer-events: none !important; user-select: none !important;"></iframe></body></html>

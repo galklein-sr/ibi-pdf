@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hebrew Financial Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 60px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 14px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .title-section {
+            text-align: right;
+            color: white;
+            margin-right: 0;
+            width: 100%;
+            padding-right: 0;
+        }
+        
+        .main-title {
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            color: #ecf0f1;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #bdc3c7;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            align-items: start;
+        }
+        
+        .circles-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            margin: 0 auto;
+        }
+        
+        .circle-1 {
+            background: #1a237e;
+        }
+        
+        .circle-2 {
+            background: #1976d2;
+            width: 220px;
+            height: 220px;
+        }
+        
+        .circle-3 {
+            background: #37474f;
+        }
+        
+        .circle-4 {
+            background: #455a64;
+        }
+        
+        .percentage {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .circle-2 .percentage {
+            font-size: 42px;
+        }
+        
+        .circle-label {
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.3;
+            font-weight: 500;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .info-title {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #bdc3c7;
+        }
+        
+        .info-percentage {
+            font-size: 48px;
+            font-weight: 300;
+            color: #ecf0f1;
+        }
+        
+        .chart-section {
+            background: rgba(30, 55, 80, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .legend-blue {
+            background: #2196f3;
+        }
+        
+        .legend-gray {
+            background: #78909c;
+        }
+        
+        .chart-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .chart-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .row-label {
+            font-size: 12px;
+            color: #bdc3c7;
+            min-width: 40px;
+        }
+        
+        .bar-container {
+            flex: 1;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+        }
+        
+        .bar-blue {
+            background: #2196f3;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .bar-gray {
+            background: #78909c;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .percentage-label {
+            font-size: 11px;
+            color: white;
+            min-width: 50px;
+            text-align: left;
+        }
+        
+        .decorative-element {
+            position: absolute;
+            right: -50px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100px;
+            height: 300px;
+            opacity: 0.1;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            border-radius: 50px;
+            z-index: 1;
+        }
+        
+        @media print {
+            body {
+                background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div>
+                    <div style="font-size: 12px;">בית השקעות</div>
+                    <div style="font-size: 10px;">למח חקירים</div>
+                </div>
+            </div>
+            
+            <div class="title-section">
+                <h1 class="main-title">Sales Overview</h1>
+                <p class="subtitle">
+                    איך בחיקי הבנקים איה"ח קונצרניות אשר נבחרות<br>
+                    בתשואה המשקפת חירות של למעלה מ-10% מאה"ח<br>
+                    ממשלתי מקביל אשר לא סומן כחובות בעיתיים
+                </p>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="right-panel">
+                <div class="info-box">
+                    <div class="info-title">
+                        אחוז חובות בעיתיים<br> 
+                        מתיק האשראי הלא<br>
+                        מחורג
+                    </div>
+                    <div class="info-percentage">0.00%</div>
+                </div>
+                
+                <div class="chart-section">
+                    <div class="chart-title">התפלגות אשראי</div>
+                    
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <div class="legend-color legend-blue"></div>
+                            <span>רבעון נוכחי</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-gray"></div>
+                            <span>רבעון קודם</span>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-bars">
+                        <div class="chart-row">
+                            <div class="row-label">כלל</div>
+                            <div class="bar-container">
+                                <div class="bar-blue"></div>
+                            </div>
+                            <div class="percentage-label">100.00%</div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="row-label"></div>
+                            <div class="bar-container">
+                                <div class="bar-gray"></div>
+                            </div>
+                            <div class="percentage-label">100.00%</div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="row-label">מסוכן</div>
+                            <div class="bar-container" style="background: rgba(255,255,255,0.05);">
+                            </div>
+                            <div class="percentage-label">0.00%</div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="row-label"></div>
+                            <div class="bar-container" style="background: rgba(255,255,255,0.05);">
+                            </div>
+                            <div class="percentage-label">0.00%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="circles-section">
+                <div class="circle circle-1">
+                    <div class="percentage">17.68%</div>
+                    <div class="circle-label">
+                        אחוז ישראלי שאינו<br>
+                        מחורג
+                    </div>
+                </div>
+                
+                <div class="circle circle-2">
+                    <div class="percentage">46.87M</div>
+                    <div class="circle-label">
+                        שווי נכסים כולל<br><br>
+                        חיק הבנקים המולל בכלל<br>
+                        לסיכון הרבעון
+                    </div>
+                </div>
+                
+                <div class="circle circle-4">
+                    <div class="percentage">9.62</div>
+                    <div class="circle-label">
+                        חוב בעיתי<br><br>
+                        שווי חובות בעיתיים בחמאם<br>
+                        להוראות משרד האוצר
+                    </div>
+                </div>
+                
+                <div class="circle circle-3">
+                    <div class="percentage">0.00%</div>
+                    <div class="circle-label">
+                        אחוז חוב בעיתיים<br>
+                        אחוז חובות בעיתיים<br>
+                        בחמאם להוראות<br>
+                        משרד האוצר מכלל נכסי<br>
+                        החיק
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="decorative-element"></div>
+    </div>
+</body>
+</html>
