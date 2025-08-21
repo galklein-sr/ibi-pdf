@@ -33,18 +33,22 @@ p_value = data_df['p_value'].sum()
 #print(p_value)
 #חוב בעייתי
 data_df = data_df.rename(columns={'סיווג פורום חוב': "debt_forum_type"})
-data_dt_filter = data_df[data_df['debt_forum_type'].isin(['השגחה מיוחדת','במעקב מיוחד','מסופק','בפיגור'])]
+discared_forum_types=['השגחה מיוחדת','במעקב מיוחד','מסופק','בפיגור']
+data_dt_filter = data_df[data_df['debt_forum_type'].isin(discared_forum_types)]
 p_o_p_filter_value = data_dt_filter['p_o_p_b_leval'].sum()
 p_debt_value = data_dt_filter['p_value'].sum()
 #אחוז מאפיק
 data_df["p_o_afik"] = data_df["p_value"] / p_value
 p_o_afik = data_df['p_o_afik'].sum()
+data_dt_filter["p_o_afik"] = data_dt_filter["p_value"] / p_value
+p_o_afik_filter = data_dt_filter['p_o_afik'].sum()
 #אחוז אשראי מוחרג
 data_df = data_df.rename(columns={'קוד אפיק ותת אפיק': "sub_afik"})
-data_dt_subafik_filter = data_df[data_df['sub_afik'].isin([405, 210, 240, 310,330,345,425])]
+discarded_sub_afik=[210,240,310,330,341,345,360,405,407,425,602]
+data_dt_subafik_filter = data_df[data_df['sub_afik'].isin(discarded_sub_afik)]
 p_o_p_afik_filter_value = data_dt_subafik_filter['p_o_p_b_leval'].sum()
 #print(p_o_afik)
-data_df.to_excel('DataToPDF/data_df.xlsx', index=False)
+#data_df.to_excel('DataToPDF/data_df.xlsx', index=False)
 
 
 # Load the template image
@@ -90,7 +94,7 @@ texts = [
     }
     ,
     {
-        'text': '10.00%',
+        'text': "{:.2f}".format(p_o_afik_filter*100) + '%',
         'position': (1020, 290),
         'font_path': 'arial.ttf',
         'font_size': 42,
