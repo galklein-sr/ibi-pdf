@@ -28,6 +28,7 @@ pdf_files = [] #איסוף קבצי PDF למיזוג
 #Extract Values:
 for case_id in ids:
     case_id = int(case_id)
+    #Data collection and calculation
     data_df = full_df[ full_df['__case'] == case_id ].copy()
     print(f"CASE {case_id}: rows = {len(data_df)}")
     if data_df.empty:
@@ -63,6 +64,8 @@ for case_id in ids:
     data_dt_subafik_filter = data_df[data_df['sub_afik'].isin(discarded_sub_afik)]
     p_o_p_afik_filter_value = data_dt_subafik_filter['p_o_p_b_leval'].sum()
 
+
+    #Image Drawings
     image = Image.open('templates/template1.png').convert("RGB")
     draw = ImageDraw.Draw(image)
 
