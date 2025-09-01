@@ -344,9 +344,92 @@ def render_white_slide(account_name_display: str,
 
 
 
-    draw_stats(left_x,  680, prev_bad_count, prev_bad_entries, prev_bad_exits, prev_class_changes, prev_late_or_delivered)
-    draw_stats(right_x, 680, curr_bad_count, curr_bad_entries, curr_bad_exits, curr_class_changes, curr_late_or_delivered)
+    draw_stats(left_x,  640, prev_bad_count, prev_bad_entries, prev_bad_exits, prev_class_changes, prev_late_or_delivered)
+    draw_stats(right_x, 640, curr_bad_count, curr_bad_entries, curr_bad_exits, curr_class_changes, curr_late_or_delivered)
 
+    return slide
+
+
+def render_data_tables(account_name_display: str):
+    def draw_centered_text(text, cx, cy, fnt, fill=(0,0,0)):
+        t = fix_hebrew(text)
+        bbox = draw.textbbox((0,0), t, font=fnt)
+        draw.text((cx-(bbox[2]-bbox[0])//2, cy-(bbox[3]-bbox[1])//2), t, font=fnt, fill=fill, align="center")
+    W, H = 1600, 900
+    slide = Image.new("RGB", (W, H), "white")
+    draw = ImageDraw.Draw(slide)
+    
+    #Titles
+    title_f = ImageFont.truetype("arial.ttf", 60)
+    sub_title_f = ImageFont.truetype("arial.ttf", 55)
+    table_header_f = ImageFont.truetype("arial.ttf", 28)
+    title_text="ניתוח חשיפות מהותיות בתיק אשראי-השוואה תקופתית"
+    t = fix_hebrew(title_text)
+    draw.text((110,50), t, font=title_f, fill=(0,0,0), align="center")
+    draw_centered_text(account_name_display,800,150,sub_title_f)
+    
+    #Dates
+    date_1="30/09/2024"
+    date_2="31/12/2024"
+    table_1_title="לווה יחיד"
+    draw_centered_text(date_1,1200,200,sub_title_f)
+    draw_centered_text(date_2,400,200,sub_title_f)
+    draw_centered_text(table_1_title,1200,260,table_header_f)
+    draw_centered_text(table_1_title,400,260,table_header_f)
+    table_header_f = ImageFont.truetype("arial.ttf", 18)
+    table_header_r="תאור מנפיק"
+    table_header_m="אחוז מתיק אשראי לא מוחרג"
+    table_header_l="אחוז מכלל התיק"
+    right_pos_x=1200
+    left_pos_x=450
+    pos_y=300
+    white_color = (255,255,255)
+    grey_color=(238,237,237)
+    blue_color=(15,72,127)
+    #right
+    draw.rectangle((right_pos_x,pos_y,right_pos_x+300,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_r,right_pos_x+150,pos_y+15,table_header_f, fill=white_color)
+    draw.rectangle((right_pos_x-200,pos_y,right_pos_x,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_m,right_pos_x-100,pos_y+15,table_header_f, fill=white_color)
+    draw.rectangle((right_pos_x-350,pos_y,right_pos_x-200,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_l,right_pos_x-275,pos_y+15,table_header_f, fill=white_color)
+    for i in range(3):
+        pos_y=pos_y+40
+        desc_text="טקסט של התאור"
+        prec_dis_text="{:.2f}".format(0.18*100) + '%'
+        prec_tot_text="{:.2f}".format(0.25*100) + '%'
+        color = white_color
+        if i%2==0:
+            color = grey_color
+        draw.rectangle((right_pos_x,pos_y,right_pos_x+300,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(desc_text,right_pos_x+150,pos_y+15,table_header_f)
+        draw.rectangle((right_pos_x-200,pos_y,right_pos_x,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(prec_dis_text,right_pos_x-100,pos_y+15,table_header_f)
+        draw.rectangle((right_pos_x-350,pos_y,right_pos_x-200,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(prec_tot_text,right_pos_x-275,pos_y+15,table_header_f)
+
+    pos_y=300
+    #left
+    draw.rectangle((left_pos_x,pos_y,left_pos_x+300,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_r,left_pos_x+150,pos_y+15,table_header_f, fill=white_color)
+    draw.rectangle((left_pos_x-200,pos_y,left_pos_x,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_m,left_pos_x-100,pos_y+15,table_header_f, fill=white_color)
+    draw.rectangle((left_pos_x-350,pos_y,left_pos_x-200,pos_y+40), fill=blue_color, outline=white_color, width=2)
+    draw_centered_text(table_header_l,left_pos_x-275,pos_y+15,table_header_f, fill=white_color)
+    for i in range(3):
+        pos_y=pos_y+40
+        desc_text="טקסט של התאור"
+        prec_dis_text="{:.2f}".format(0.18*100) + '%'
+        prec_tot_text="{:.2f}".format(0.25*100) + '%'
+        color = white_color
+        if i%2==0:
+            color = grey_color
+        draw.rectangle((left_pos_x,pos_y,left_pos_x+300,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(desc_text,left_pos_x+150,pos_y+15,table_header_f)
+        draw.rectangle((left_pos_x-200,pos_y,left_pos_x,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(prec_dis_text,left_pos_x-100,pos_y+15,table_header_f)
+        draw.rectangle((left_pos_x-350,pos_y,left_pos_x-200,pos_y+40), fill=color, outline=color, width=0)
+        draw_centered_text(prec_tot_text,left_pos_x-275,pos_y+15,table_header_f)
     return slide
 
 # =========================
@@ -407,12 +490,12 @@ def main():
                                        curr_bad_exits, prev_bad_exits,
                                        curr_class_changes, prev_class_changes,
                                        curr_late_or_delivered, prev_late_or_delivered)
-
+        tables_img = render_data_tables(account_name)
         # שמירה
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
         exec_img.save(out_png)
-        exec_img.save(out_pdf, save_all=True, append_images=[white_img])
+        exec_img.save(out_pdf, save_all=True, append_images=[white_img, tables_img])
         pdf_parts.append(out_pdf)
         print(f"CASE {case_id}: created {out_png}, {out_pdf}")
 
