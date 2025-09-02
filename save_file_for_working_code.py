@@ -31,6 +31,906 @@ def fix_hebrew(text: str) -> str:
     except Exception:
         return str(text)
 
+# ===== new function ======
+def load_font(size: int) -> ImageFont.FreeTypeFont:
+    for path in [
+        "arial.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/ARIAL.TTF",
+        "NotoSansHebrew-Regular.ttf",
+        "fonts/NotoSansHebrew-Regular.ttf",
+    ]:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def fmt_pct(v: float | None) -> str:
+    if v is None:
+        return "--%"
+    try:
+        return f"{float(v)*100:.2f}%"
+    except Exception:
+        return "--%"
+    
+def ellipsize(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
+    t = fix_hebrew(str(text))
+    if draw.textbbox((0, 0), t, font=font)[2] <= max_w:
+        return t
+    # חותכים ומוסיפים '…'
+    base = t
+    while len(t) > 1 and draw.textbbox((0, 0), t + "…", font=font)[2] > max_w:
+        t = t[:-1]
+    return t + "…"
+
+
+def _draw_text_fit(draw, text, x, y, w, h,
+                   base_size=20, min_size=12,
+                   color=(255,255,255), align="center"):
+    """
+    מצייר טקסט בתוך תיבה (x,y,w,h) כך שייכנס תמיד:
+    - מקטין פונט באופן הדרגתי עד min_size
+    - ואם עדיין רחב מדי, עושה אליפסיס … בתוך הרוחב המותר.
+    align: "left" | "center" | "right"
+    """
+    raw = fix_hebrew(str(text))
+    size = int(base_size)
+    f = load_font(size)
+
+    # נסה להקטין עד שנכנס או עד גודל מינימלי
+    while size >= min_size:
+        f = load_font(size)
+        tw, th = _text_size(draw, raw, f)
+        if tw <= (w - 8):  # שוליים קטנים משני הצדדים
+            break
+        size -= 1
+
+    # אם עדיין לא נכנס — חתוך עם אליפסיס
+    if _text_size(draw, raw, f)[0] > (w - 8):
+        raw = ellipsize(draw, raw, f, w - 8)
+
+    tw, th = _text_size(draw, raw, f)
+    if align == "left":
+        tx = x + 4
+    elif align == "right":
+        tx = x + w - tw - 4
+    else:  # center
+        tx = x + (w - tw) // 2
+    ty = y + (h - th) // 2
+    draw.text((tx, ty), raw, font=f, fill=color)
+    
+    
+def _fit_text_to_width(draw, text, font, max_width, min_size=12):
+    """מקטין גודל פונט עד שנכנס ברוחב, ואם עדיין גדול—חותך עם '…'."""
+    t = "" if text is None else str(text)
+    size = getattr(font, "size", 22)
+    f = font
+    # קודם מקטינים פונט
+    while size > min_size:
+        w = draw.textbbox((0,0), t, font=f)[2]
+        if w <= max_width:
+            return f, t
+        size -= 1
+        f = load_font(size)
+    # אם עדיין לא נכנס—חיתוך עם אליפסיס
+    while t and draw.textbbox((0,0), t + "…", font=f)[2] > max_width:
+        t = t[:-1]
+    return f, (t + "…") if t else ""
+
+
+def _text_center_in_rect(draw, text, font, rect, fill=(255,255,255)):
+    """מציב טקסט ממורכז בתוך מלבן (left,top,right,bottom)."""
+    l,t,r,b = rect
+    w = r - l
+    h = b - t
+    bbox = draw.textbbox((0,0), text, font=font)
+    tw = bbox[2]-bbox[0]
+    th = bbox[3]-bbox[1]
+    x = l + (w - tw)//2
+    y = t + (h - th)//2
+    draw.text((x,y), text, font=font, fill=fill)
+
+    
+    
+    # ========================= new page , table two =========================
+
+def _fmt_num(n, digits=2):
+    try:
+        v = float(n)
+    except Exception:
+        return "-"
+    # אלפי מפרידים עם נקודה עשרונית
+    s = f"{v:,.{digits}f}"
+    return s
+
+def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_fracs):
+    """
+    headers: רשימת טקסטים (משמאל לימין!)
+    rows:    רשימת טורים בטופל באותו סדר של headers
+    col_fracs: סכום≈1, אורך כמו headers
+    """
+    # גדלים
+    row_h = 40
+    head_h = 42
+    pad    = 10
+    hfill  = (12,52,87)   # כחול כהה לכותרת
+    htext  = (255,255,255)
+    grid   = (220,220,220)
+    zebra1 = (255,255,255)
+    zebra2 = (245,245,245)
+
+    # רוחבי עמודות
+    col_ws = [int(w*f) for f in col_fracs]
+    # תיקון סכום רוחבים
+    col_ws[-1] = w - sum(col_ws[:-1])
+
+    # --- כותרת טבלה ---
+    col_x = x
+    for i, h in enumerate(headers):
+        cw = col_ws[i]
+        draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
+        txt = fix_hebrew(h)
+        # טקסט במרכז תא כותרת
+        tb = draw.textbbox((0,0), txt, font=header_font)
+        draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
+                  txt, font=header_font, fill=htext)
+        col_x += cw
+
+    # קווי הפרדה אנכיים בכותרת
+    col_x = x
+    for i in range(len(headers)+1):
+        draw.line([(col_x, y), (col_x, y+head_h)], fill=grid, width=1)
+        if i < len(headers):
+            col_x += col_ws[i]
+    # קו תחתון לכותרת
+    draw.line([(x, y+head_h), (x+w, y+head_h)], fill=grid, width=1)
+
+    # --- שורות נתונים ---
+    cy = y + head_h
+    for r_i, row in enumerate(rows):
+        bg = zebra1 if (r_i % 2 == 0) else zebra2
+        draw.rectangle([x, cy, x+w, cy+row_h], fill=bg)
+
+        col_x = x
+        for i, cell in enumerate(row):
+            cw = col_ws[i]
+            txt = fix_hebrew("" if cell is None else str(cell))
+            # לוודא התאמת טקסט לרוחב
+            txt = ellipsize(draw, txt, cell_font, max_w=cw - 2*pad)
+            # יישור: מספרים לימין, תיאור לשמאל
+            is_num_col = i not in (len(row)-1,)  # כל העמודות חוץ מהאחרונה (תיאור) מספריות
+            tb = draw.textbbox((0,0), txt, font=cell_font)
+            if is_num_col:
+                tx = col_x + cw - pad - (tb[2]-tb[0])
+            else:
+                tx = col_x + pad
+            ty = cy + (row_h - (tb[3]-tb[1]))//2
+            draw.text((tx, ty), txt, font=cell_font, fill=(20,20,20))
+            # קווי הפרדה
+            draw.line([(col_x, cy), (col_x, cy+row_h)], fill=grid, width=1)
+            col_x += cw
+        # קו ימין של השורה
+        draw.line([(x+w, cy), (x+w, cy+row_h)], fill=grid, width=1)
+        # קו תחתון
+        draw.line([(x, cy+row_h), (x+w, cy+row_h)], fill=grid, width=1)
+
+        cy += row_h
+
+    return cy
+
+
+# ==== Last line RTL ====
+def _draw_footer_total(draw: ImageDraw.ImageDraw, y: int, label_he: str, amount_str: str, W: int, font) -> None:
+    """
+    מצייר את 'סה\"כ אשראי לא מוחרג' מימין ואת המספר משמאל,
+    כאשר שני הפריטים ממורכזים יחד כבלוק אחד.
+    """
+    # הופכים עברית כדי שלא תהפך
+    label_fixed = fix_hebrew(label_he)
+
+    # מודדים רוחבים
+    lb = draw.textbbox((0, 0), label_fixed, font=font)
+    ab = draw.textbbox((0, 0), amount_str, font=font)
+    w_label = lb[2] - lb[0]
+    w_amount = ab[2] - ab[0]
+
+    gap = 18  # רווח קטן בין המספר לטקסט
+    block_w = w_amount + gap + w_label
+    x0 = (W - block_w) // 2  # ממרכזים את כל הבלוק
+
+    # המספר משמאל (LTR)
+    draw.text((x0, y), amount_str, font=font, fill=(20, 20, 20))
+    # הכיתוב מימין (RTL) – מצויר אחרי המספר וה־gap
+    draw.text((x0 + w_amount + gap, y), label_fixed, font=font, fill=(20, 20, 20))
+
+
+def render_bad_debts_page(account_name_display: str,
+                          bucket_label: str,
+                          df_curr: pd.DataFrame,
+                          date_str: str | None = None) -> Image.Image:
+    """
+    יוצר עמוד 'תיאור חובות בעייתיים...' עבור בקט מסוים (ארם עד 50 / 50-60 / 60+)
+    """
+    # --- בסיס ---
+    W, H = 1600, 900
+    img  = Image.new("RGB", (W, H), (245,245,245))
+    draw = ImageDraw.Draw(img)
+
+    title_f   = load_font(56)
+    sub_f     = load_font(40)
+    header_f  = load_font(22)
+    cell_f    = load_font(20)
+    small_f   = load_font(22)
+
+    # --- כותרות עמוד ---
+    t1 = "תיאור חובות בעייתיים בתיק אשראי לא מוחרג"
+    draw.text((W//2 - draw.textbbox((0,0), fix_hebrew(t1), font=title_f)[2]//2, 60),
+              fix_hebrew(t1), font=title_f, fill=(20,20,20))
+    draw.text((W//2 - draw.textbbox((0,0), fix_hebrew(bucket_label), font=sub_f)[2]//2, 120),
+              fix_hebrew(bucket_label), font=sub_f, fill=(20,20,20))
+
+    # --- סינון נתונים ---
+    df = df_curr.copy()
+    # סינון לפי ארם
+    df = _filter_aram_bucket(df, bucket_label)
+    # השמטת 'מוחרגים'
+    if 'sub_afik' in df.columns:
+        df = df[~df['sub_afik'].isin(EXCLUDED_SUB_AFIK)]
+    # רק סיווגים בעייתיים
+    col_forum = _find_col(df, ["סיווג פורום חוב","debt_forum_type"])
+    if col_forum:
+        df = df[df[col_forum].isin(BAD_TYPES)]
+
+    # מציאת עמודות נוספות (שמות חלופיים נפוצים)
+    col_desc   = _find_col(df, ["תיאור נייר","תאור נייר","שם נייר","security_name"])
+    col_qty    = _find_col(df, ["כמות","quantity"])
+    col_value  = _find_col(df, ["שווי נייר","sec_value","שווי שוק"])
+    col_pctNE  = _find_col(df, ["pct_non_excluded","אחוז מאשראי לא מוחרג"])
+    col_maalot = _find_col(df, ["דירוג מעלות לנייר","דרוג מעלות לנייר","דירוג מעלות","דרוג מעלות"])
+    col_midrug = _find_col(df, ["דירוג מידרג לנייר","דרוג מידרג לנייר","דירוג מידרג","דרוג מידרג"])
+    col_machem = _find_col(df, ["מח\"מ מחושב","מחמ מחושב","מחקמ מחושב","מח\"מ"])
+    col_yield  = _find_col(df, ["תשואה ברוטו","תשואה","yld"])
+
+    # חישוב pct_non_excluded אם חסר
+    if col_pctNE is None and col_value is not None:
+        tot_ne = pd.to_numeric(df[col_value], errors="coerce").fillna(0).sum()
+        df["_tmp_pct_ne"] = pd.to_numeric(df[col_value], errors="coerce").fillna(0) / (tot_ne if tot_ne else 1)
+        col_pctNE = "_tmp_pct_ne"
+
+    # מיון לפי שווי נייר (אם קיים)
+    if col_value:
+        df["_sort"] = pd.to_numeric(df[col_value], errors="coerce").fillna(0)
+        df = df.sort_values("_sort", ascending=False)
+    else:
+        df = df.copy()
+
+    # בניית שורות (משמאל לימין!)
+    rows = []
+    for _, r in df.iterrows():
+        rows.append((
+            # סיווג פורום חוב (עמודה שמאלית)
+            r.get(col_forum, ""),
+            _fmt_num(r.get(col_yield, ""), 2),
+            _fmt_num(r.get(col_machem, ""), 2),
+            str(r.get(col_midrug, "")),
+            str(r.get(col_maalot, "")),
+            f"{(float(r.get(col_pctNE, 0))*100):.2f}%" if col_pctNE else "--%",
+            _fmt_num(r.get(col_value, ""), 2),
+            _fmt_num(r.get(col_qty, ""), 2),
+            r.get(col_desc, "")
+        ))
+
+    # הוספת שורת Total
+    if len(rows) > 0:
+        sum_qty   = pd.to_numeric(df[col_qty], errors="coerce").fillna(0).sum() if col_qty else 0
+        sum_value = pd.to_numeric(df[col_value], errors="coerce").fillna(0).sum() if col_value else 0
+        sum_pct   = pd.to_numeric(df[col_pctNE], errors="coerce").fillna(0).sum() if col_pctNE else 0
+        rows.append((
+            "Total",
+            _fmt_num(df[col_yield].astype(float).mean() if col_yield else 0, 2) if col_yield else "-",
+            _fmt_num(df[col_machem].astype(float).mean() if col_machem else 0, 2) if col_machem else "-",
+            "", "",
+            f"{sum_pct*100:.2f}%" if col_pctNE else "--%",
+            _fmt_num(sum_value, 2),
+            _fmt_num(sum_qty, 2),
+            ""   # תאור – ריק בשורת הסיכום
+        ))
+        
+        
+    if len(rows) == 0:
+        rows.append((fix_hebrew("מסופק"), "", "", "", "", "", "", "", ""))
+        rows.append(("Total",  "", "", "", "", "", "", "", "")) 
+
+    # ציור הטבלה
+    table_w = 1500
+    left_x  = (W - table_w)//2
+    top_y   = 200
+
+    headers = [
+        "סיווג פורום חוב","תשואה ברוטו","מח\"מ מחושב","דרוג מידרג לנייר",
+        "דרוג מעלות לנייר","אחוז מאשראי לא מוחרג","שווי נייר","כמות","תאור נייר"
+    ]
+    # פרופורציות רוחב (משמאל לימין)
+    col_fracs = [0.10, 0.10, 0.10, 0.10, 0.11, 0.13, 0.10, 0.09, 0.17]
+
+    end_y = _draw_table_full(draw, left_x, top_y, table_w,
+                             headers, rows, header_f, cell_f, col_fracs)
+
+    # טקסט הסבר מתחת לטבלה
+    note = "נכון לתאריך הדוח. אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי מנפיקים אלה"
+    tb = draw.textbbox((0,0), fix_hebrew(note), font=small_f)
+    draw.text((W//2 - (tb[2]-tb[0])//2, end_y + 60), fix_hebrew(note), font=small_f, fill=(30,30,30))
+
+    # סה״כ אשראי לא מוחרג בתחתית
+    tot_ne_value = 0
+    if col_value is not None:
+        tot_ne_value = pd.to_numeric(df[col_value], errors="coerce").fillna(0).sum()
+    bottom_text = "סה\"כ אשראי לא מוחרג"
+    bt = fix_hebrew(bottom_text)
+    tb1 = draw.textbbox((0,0), bt, font=small_f)
+    val = _fmt_num(tot_ne_value, 0)
+    tb2 = draw.textbbox((0,0), val, font=small_f)
+    gap = 35
+    cx = W//2 - ( (tb1[2]-tb1[0]) + gap + (tb2[2]-tb2[0]) )//2
+    yb = H - 90
+    draw.text((cx, yb), bt, font=small_f, fill=(20,20,20))
+    draw.text((cx + (tb1[2]-tb1[0]) + gap, yb), val, font=small_f, fill=(20,20,20))
+
+    return img
+
+
+# ========== פשעק 3 ==========
+
+def render_bad_distributions_page(
+    account_name_display: str,
+    bucket_label: str,
+    df_curr: pd.DataFrame,
+    date_str: str | None = None
+) -> Image.Image:
+    """עמוד 3: שלוש טבלאות התפלגות + הערה מרכזית + שורת בחירה"""
+    # בסיס וקנבס
+    W, H = 1600, 900
+    img  = Image.new("RGB", (W, H), (245,245,245))
+    draw = ImageDraw.Draw(img)
+
+    # פונטים (אותו סגנון כמו בעמודים הקודמים)
+    title_f  = load_font(56)
+    sub_f    = load_font(40)
+    header_f = load_font(22)
+    cell_f   = load_font(20)
+
+    # כותרות עמוד
+    t1 = "תיאור חובות בעייתיים בתיק אשראי לא מוחרג"
+    _draw_centered(draw, t1,           W//2, 60,  title_f, (20,20,20))
+    _draw_centered(draw, bucket_label, W//2, 120, sub_f,   (20,20,20))
+
+    # סינון נתונים כמו בעמוד 2
+    df = df_curr.copy()
+    df = _filter_aram_bucket(df, bucket_label)
+    if 'sub_afik' in df.columns:
+        df = df[~df['sub_afik'].isin(EXCLUDED_SUB_AFIK)]
+
+    # עמודת סכום לפילוח (שווי נייר)
+    val_col = _find_col(df, ["שווי נייר","שווי","value"])
+    def _top_rows(group_col: str | None) -> list[tuple[str,str,str]]:
+        if not group_col or not val_col or df.empty:
+            return []
+        g = (df.groupby(group_col, dropna=False)[val_col]
+                .sum().sort_values(ascending=False).head(3))
+        total = float(g.sum()) if float(g.sum()) != 0 else 1.0
+        rows = []
+        for label, val in g.items():
+            pct = float(val) / total
+            rows.append((fmt_pct(pct), fmt_km(val), str(label)))
+        return rows
+
+    # שורות לכל טבלה
+    rows_right = _top_rows(_find_col(df, ["דרג קבוע לנייר","דרוג קבוע לנייר","דירוג קבוע"]))
+    rows_mid   = _top_rows(_find_col(df, ["תאור קבוצת לווים","שם קבוצת לווים","קבוצת לווים"]))
+    rows_left  = _top_rows(_find_col(df, ["תאור ענף","ענף"]))
+
+    # אם אין נתונים – שורה אחת ריקה כדי לשמור על המבנה
+    def _fallback(r): 
+        return r if r else [("","", "")]
+    rows_right = _fallback(rows_right)
+    rows_mid   = _fallback(rows_mid)
+    rows_left  = _fallback(rows_left)
+
+    # מיקומים/מידות לטבלאות (3 טב' בשורה)
+    y0 = 200
+    gap = 60
+    w_small = 440
+    x_left  = 80
+    x_mid   = x_left + w_small + gap
+    x_right = x_mid + w_small + gap
+
+    # בכל הטבלאות סדר העמודות הוא משמאל לימין:
+    #   [אחוז מאשראי לא מוחרג, שווי נייר, עמודת תיאור]
+    headers_left  = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור ענף"]
+    headers_mid   = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור קבוצת לווים"]
+    headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרג קבוע לנייר"]
+    fracs = [0.28, 0.22, 0.50]   # חלוקת רוחבים: אחוז/שווי/תיאור
+
+    # ציור שלוש הטבלאות
+    _draw_table_full(draw, x_left,  y0, w_small, headers_left,  rows_left,  header_f, cell_f, fracs)
+    _draw_table_full(draw, x_mid,   y0, w_small, headers_mid,   rows_mid,   header_f, cell_f, fracs)
+    _draw_table_full(draw, x_right, y0, w_small, headers_right, rows_right, header_f, cell_f, fracs)
+
+    # טקסט אמצעי מתחת לטבלאות
+    note = "נכון לתאריך הדוח, אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי קבוצת הלווים הנ\"ל"
+    _draw_centered(draw, note, W//2, 360, cell_f, (30,30,30))
+
+    # שורת הטבלה האמצעית (בחירה) – כותרות בלבד ושורה אחת ריקה
+    headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]  # משמאל לימין
+    rows_line    = [("","","")]
+    _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
+
+    return img
+
+
+    # ====== My new code =======
+# ==== helpers for data-tables page ====
+
+# EXCLUDED_SUB_AFIK = [210, 240, 310, 330, 341, 345, 360, 405, 407, 425, 602]
+
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont):
+    # מחזיר (width, height) באמצעות textbbox
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+
+def _find_col(df, candidates):
+    for c in candidates:
+        if c in df.columns:
+            return c
+    return None
+
+
+def _detect_borrower_col(df):
+    return _find_col(df, ["תאור מנפיק", "תיאור מנפיק", "לווה"])
+
+def _detect_sector_col(df):
+    return _find_col(df, ["תאור ענף", "תיאור ענף", "ענף"])
+
+def _detect_group_col(df):
+    return _find_col(df, ["תאור קבוצת לווים", "שם קבוצת לווים", "קבוצת לווים"])
+
+def _ensure_num(df, cols):
+    for c in cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
+    return df
+
+
+def _draw_centered(draw, text, cx, y_mid, font, fill):
+    """מצייר טקסט ממורכז סביב y שהינו מרכז-אנכי (נוח לכותרות)."""
+    t = fix_hebrew(text)
+    tw, th = _text_size(draw, t, font)
+    draw.text((cx - tw // 2, y_mid - th // 2), t, font=font, fill=fill)
+
+
+def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
+    """
+    מצייר כותרת סקשן ממורכזת + טבלה + ריווח נדיב בין סקשנים.
+    """
+    # כותרת סקשן
+    t = fix_hebrew(title)
+    tw, th = _text_size(draw, t, sub_font)
+    _draw_centered(draw, title, x + w_tbl // 2, top_y + th // 2, sub_font, (0, 0, 0))
+
+    # טבלה עם רווח ברור אחרי הכותרת
+    table_top = top_y + th + 16
+    _draw_table(draw, x, table_top, w_tbl, 38, header, rows, header_f, cell_f, aligns=aligns)
+
+    # גובה: שורת כותרת אחת + עד 3 שורות + רווח לפני הסקשן הבא
+    used_rows = min(3, len(rows))
+    next_y = table_top + 38 * (1 + used_rows) + 40
+    return next_y
+
+def _draw_segmented_selector(draw, center_x, y, total_w, h, labels, font):
+    """מצייר סרגל בחירה מפוצל לשלושה חלקים (ויזואלי בלבד)."""
+    x = center_x - total_w//2
+    outline = (60, 100, 160)
+    fill    = (255,255,255)
+    # רקע מעוגל
+    try:
+        draw.rounded_rectangle([x, y, x+total_w, y+h], radius=12, outline=outline, width=2, fill=fill)
+    except:
+        # fallback לריבוע רגיל אם PIL ישן
+        draw.rectangle([x, y, x+total_w, y+h], outline=outline, width=2, fill=fill)
+    # מחיצות אנכיות
+    seg_w = total_w // len(labels)
+    for i in range(1, len(labels)):
+        draw.line([(x + i*seg_w, y), (x + i*seg_w, y+h)], fill=outline, width=2)
+    # טקסטים
+    for i, lbl in enumerate(labels):
+        lx = x + i*seg_w
+        lf, lt = _fit_text_to_width(draw, lbl, font, seg_w - 16, min_size=12)
+        _text_center_in_rect(draw, lt, lf, (lx+4, y+4, lx+seg_w-4, y+h-4), fill=(30,30,30))
+
+
+
+def _filter_aram_bucket(df, bucket_label: str):
+    """
+    אם קיימת עמודת 'ארם' – נסנן:
+    - 'ארם עד 50' => ערך <= 50
+    - 'ארם 50-60' => 50 < ערך <= 60
+    - 'ארם 60 ומעלה' => ערך > 60
+    אם אין – נחזיר df כמו שהוא (לא שוברים הרצה).
+    """
+    col = _find_col(df, ["ארם", "ARem", "A.R.M", "ARM"])
+    if col is None:
+        return df
+    s = pd.to_numeric(df[col], errors="coerce")
+    if "עד 50" in bucket_label:
+        return df[s <= 50]
+    if "50-60" in bucket_label or "50–60" in bucket_label:
+        return df[(s > 50) & (s <= 60)]
+    if "60" in bucket_label:
+        return df[s > 60]
+    return df
+
+
+def _compute_top3(df: pd.DataFrame, group_col: str) -> list[dict]:
+    """
+    מחזיר עד 3 רשומות: label, pct_non_excluded, pct_total.
+    pct_total נלקח מעמודה 'אחוז משווי תיק לפי שיערוך אחרון' אם קיימת;
+    אחרת נחשב לפי sum(val) / sum(val_total).
+    """
+    if df is None or df.empty or not group_col or group_col not in df.columns:
+        return []
+
+    val_col        = _find_col(df, ["שווי נייר", "sec_value", "שווי"])
+    pct_total_col  = _find_col(df, ["אחוז משווי תיק לפי שיערוך אחרון", "pct_of_portfolio_leval"])
+    sub_afik_col   = _find_col(df, ["קוד אפיק ותת אפיק", "sub_afik"])
+
+    need = [c for c in [val_col, pct_total_col] if c]
+    _ensure_num(df, need)
+
+    # דנומי לא-מוחרג (על בסיס value):
+    denom_ne = 0.0
+    df_ne = df
+    if val_col:
+        if sub_afik_col and sub_afik_col in df.columns:
+            df_ne = df[~df[sub_afik_col].isin(EXCLUDED_SUB_AFIK)].copy()
+        denom_ne = float(df_ne[val_col].sum()) or 0.0
+
+    # אגרגציה רק עם עמודות שקיימות בפועל
+    agg_dict = {}
+    if val_col:
+        agg_dict[val_col] = "sum"
+    if pct_total_col:
+        agg_dict[pct_total_col] = "sum"
+    if not agg_dict:
+        return []
+
+    agg = (
+        df.groupby(group_col, dropna=True)
+          .agg(agg_dict)
+          .rename(columns={val_col: "sum_val", pct_total_col: "sum_pct"})
+          .reset_index()
+    )
+
+    # לחשב pct_total אם אין עמודת אחוזים מקורית
+    if not pct_total_col and val_col:
+        denom_total = float(df[val_col].sum()) or 0.0
+        agg["sum_pct"] = 0.0 if denom_total == 0 else (agg["sum_val"] / denom_total)
+
+    # לחשב pct_non_excluded
+    if val_col:
+        agg_ne = (
+            df_ne.groupby(group_col, dropna=True)[val_col]
+                 .sum()
+                 .rename("sum_val_ne")
+                 .reset_index()
+        )
+        agg = agg.merge(agg_ne, on=group_col, how="left")
+        agg["sum_val_ne"] = agg["sum_val_ne"].fillna(0.0)
+        agg["pct_ne"] = 0.0 if denom_ne == 0 else (agg["sum_val_ne"] / denom_ne)
+    else:
+        agg["pct_ne"] = 0.0
+
+    # דירוג: קודם “לא מוחרג”, אחר כך “מכלל התיק”
+    agg = agg.sort_values(["pct_ne", "sum_pct"], ascending=False).head(3)
+
+    out = []
+    for _, r in agg.iterrows():
+        out.append({
+            "label": str(r[group_col]),
+            "pct_non_excluded": float(r["pct_ne"]),
+            "pct_total": float(r["sum_pct"]),
+        })
+    return out
+
+def _draw_table(draw, x, y, w, row_h, header, rows, header_f, cell_f, aligns=None):
+    if aligns is None:
+        aligns = ["right"] * len(header)
+
+    header_bg = (15, 72, 127)
+    header_fg = (255, 255, 255)
+
+    # פס כותרות
+    draw.rectangle([x, y, x + w, y + row_h], fill=header_bg)
+
+    # עמדות עמודות
+    col_x = x
+    col_positions = []
+    for (title, ratio), align in zip(header, aligns):
+        cw = int(w * ratio)
+        col_positions.append((col_x, cw, align))
+
+        # *** כאן השינוי: טקסט הכותרת מתאים את עצמו לתיבה ***
+        _draw_text_fit(draw, title, col_x, y, cw, row_h,
+                       base_size=20, min_size=12,
+                       color=header_fg, align="center")
+
+        # קו אנכי לבן דק בין עמודות גם על ההדר
+        draw.line([(col_x, y), (col_x, y + row_h)], fill=(255, 255, 255), width=1)
+        col_x += cw
+    draw.line([(x + w, y), (x + w, y + row_h)], fill=(255, 255, 255), width=1)
+
+    # שורות נתונים (עד 3) + קווי הפרדה דקים
+    alt1, alt2 = (255, 255, 255), (238, 237, 237)
+    y_row = y + row_h
+    max_rows = min(3, len(rows))
+    for i in range(max_rows):
+        bg = alt2 if i % 2 == 0 else alt1
+        draw.rectangle([x, y_row, x + w, y_row + row_h], fill=bg)
+        draw.line([(x, y_row), (x + w, y_row)], fill=(255, 255, 255), width=1)
+
+        for (cx, cw, align), val in zip(col_positions, rows[i]):
+            txt = ellipsize(draw, val, cell_f, cw - 20)
+            tw, th = _text_size(draw, txt, cell_f)
+            if align == "left":
+                tx = cx + 10
+            elif align == "center":
+                tx = cx + (cw - tw) // 2
+            else:
+                tx = cx + cw - tw - 10
+            draw.text((tx, y_row + (row_h - th) // 2), txt, font=cell_f, fill=(25, 25, 25))
+
+        vx = x
+        for _, cw, _ in col_positions:
+            draw.line([(vx, y_row), (vx, y_row + row_h)], fill=(255, 255, 255), width=1)
+            vx += cw
+
+        y_row += row_h
+
+    draw.line([(x, y_row), (x + w, y_row)], fill=(255, 255, 255), width=1)
+
+
+def render_data_tables(
+    account_name_display: str,
+    bucket_label: str,
+    curr_df: pd.DataFrame,
+    prev_df: pd.DataFrame | None,
+    date_curr: str | None,
+    date_prev: str | None
+) -> Image.Image:
+
+    # ===== פריסה (מרווחים/גדלים) =====
+    TITLE_Y       = 70    # כותרת ראשית
+    BUCKET_Y      = 145   # "ארם עד 50"
+    DATES_Y       = 225   # שורת התאריכים
+    FIRST_TABLE_Y = 285   # תחילת הטבלאות (סקשן ראשון בכל צד)
+
+    # ===== איתור עמודות מקור =====
+    borrower_col = _find_col(curr_df, ["תאור מנפיק", "תיאור מנפיק", "לווה"])
+    sector_col   = _find_col(curr_df, ["תאור ענף", "תיאור ענף", "ענף"])
+    group_col    = _find_col(curr_df, ["תאור קבוצת לווים", "שם קבוצת לווים", "קבוצת לווים"])
+
+    # ===== Top-3 לכל טבלה =====
+    cur_borrowers = _compute_top3(curr_df, borrower_col) if borrower_col else []
+    cur_sectors   = _compute_top3(curr_df, sector_col)   if sector_col   else []
+    cur_groups    = _compute_top3(curr_df, group_col)    if group_col    else []
+
+    prv_borrowers = _compute_top3(prev_df, borrower_col) if (prev_df is not None and borrower_col) else []
+    prv_sectors   = _compute_top3(prev_df, sector_col)   if (prev_df is not None and sector_col)   else []
+    prv_groups    = _compute_top3(prev_df, group_col)    if (prev_df is not None and group_col)    else []
+
+    # ===== קנבס וגליפים =====
+    # --- הכנה לציור ---
+    W, H = 1600, 1020  # היה 900; הגדלנו כדי שלא ייחתכו שורות הטבלה התחתונה
+    img = Image.new("RGB", (W, H), (245, 245, 245))
+    draw = ImageDraw.Draw(img)
+
+    # פונטים מעט קטנים יותר
+    title_f  = load_font(60)
+    sub_f    = load_font(40)
+    date_f   = load_font(36)
+    header_f = load_font(16)
+    cell_f   = load_font(16)
+
+    # כותרות עליונות + ריווחים גדולים יותר
+    _draw_centered(draw, "ניתוח חשיפות מהותיות בתיק אשראי – השוואה תקופתית", W // 2, 70, title_f, (20, 20, 20))
+    _draw_centered(draw, bucket_label, W // 2, 160, sub_f, (20, 20, 20))   # רווח גדול יותר לעומת הכותרת הראשית
+
+    # פריסת עמודות
+    left_x, right_x, w_tbl = 120, 840, 560
+
+    # תאריכים ממורכזים
+    if not date_curr: date_curr = fix_hebrew("רבעון נוכחי")
+    if not date_prev: date_prev = fix_hebrew("רבעון קודם")
+    _draw_centered(draw, date_curr, left_x  + w_tbl // 2, 240, date_f, (20, 20, 20))  # רווח גדול יותר מה־bucket
+    _draw_centered(draw, date_prev, right_x + w_tbl // 2, 240, date_f, (20, 20, 20))
+
+    # כותרות עמודות (שמאל→ימין) — עם מקום רחב ל"תאור ..."
+    header_borrower = [
+        ("אחוז מכלל התיק", 0.18),
+        ("אחוז מתיק אשראי לא מוחרג", 0.36),  # היה 0.32
+        ("תאור מנפיק", 0.46),
+    ]
+    header_sector = [
+        ("אחוז מכלל התיק", 0.18),
+        ("אחוז מתיק אשראי לא מוחרג", 0.36),
+        ("תאור ענף", 0.46),
+    ]
+    header_group = [
+        ("אחוז מכלל התיק", 0.18),
+        ("אחוז מתיק אשראי לא מוחרג", 0.36),
+        ("תאור קבוצת לווים", 0.46),
+    ]
+
+    # יישור נתונים: שתי עמודות האחוזים לימין, התיאור לשמאל
+    aligns = ["right", "right", "left"]
+
+    # סקשנים — עמודה שמאלית (נוכחי)
+    yL = 285
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "לווה יחיד",   sub_f, header_borrower, cur_borrowers, header_f, cell_f, aligns)
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "ענפים",       sub_f, header_sector,   cur_sectors,   header_f, cell_f, aligns)
+    _  = _draw_section(draw, left_x,  yL, w_tbl, "קבוצת לווים", sub_f, header_group,   cur_groups,    header_f, cell_f, aligns)
+
+    # סקשנים — עמודה ימנית (קודם)
+    yR = 285
+    yR = _draw_section(draw, right_x, yR, w_tbl, "לווה יחיד",   sub_f, header_borrower, prv_borrowers, header_f, cell_f, aligns)
+    yR = _draw_section(draw, right_x, yR, w_tbl, "ענפים",       sub_f, header_sector,   prv_sectors,   header_f, cell_f, aligns)
+    _  = _draw_section(draw, right_x, yR, w_tbl, "קבוצת לווים", sub_f, header_group,   prv_groups,    header_f, cell_f, aligns)
+
+    return img
+
+def render_bad_debts_page_old(
+    account_name_display: str,
+    bucket_label: str,
+    df_curr: pd.DataFrame,
+    date_str: str | None = None,
+    total_non_excluded_value: float | None = None,  # אפשר להשאיר None בשלב זה
+) -> Image.Image:
+    """
+    עמוד: 'תיאור חובות בעייתיים בתיק אשראי לא מוחרג'
+    טבלה אחת רחבה (9 עמודות) + הערה + שורת סה"כ למטה (placeholder בינתיים).
+    """
+
+    # --- זיהוי עמודות מקור ---
+    col_desc     = _find_col(df_curr, ["תאור נייר", "תיאור נייר", "שם נייר"])
+    col_qty      = _find_col(df_curr, ["כמות"])
+    col_value    = _find_col(df_curr, ["שווי נייר"])
+    col_pct_ne   = _find_col(df_curr, ["אחוז מאשראי לא מוחרג", "אחוז מתיק אשראי לא מוחרג"])
+    col_rate_maa = _find_col(df_curr, ["דרוג מעלות לנייר", "דירוג מעלות לנייר", "דירוג מעלות"])
+    col_rate_mid = _find_col(df_curr, ["דרוג מידרג לנייר", "דירוג מידרג לנייר", "דירוג מידרג"])
+    col_makam    = _find_col(df_curr, ["מח\"מ מחושב", "מח\"מ", "מחמ מחושב"])
+    col_yield    = _find_col(df_curr, ["תשואה ברוטו", "תשואה"])
+    # col_forum    = _find_col(df_curr, ["סיווג פורום חוב"])
+    col_forum    = _find_col(df_curr, ["סיווג פורום חוב", "debt_forum_type"])
+
+    # פונקציות עזר לפורמט
+    def _fmt_int(x):
+        try:
+            return f"{int(round(float(x))):,}".replace(",", ",")
+        except Exception:
+            return str(x)
+
+    def _fmt_pct(x):
+        try:
+            return f"{float(x)*100:.2f}%"
+        except Exception:
+            return str(x)
+
+    # סינון רשומות "מסופק" (כפי שביקשת)
+    df_bad = df_curr.copy()
+    if col_forum and col_forum in df_bad.columns:
+        df_bad = df_bad[df_bad[col_forum].astype(str).str.strip() == "מסופק"]
+
+    # בניית שורות הטבלה
+    rows = []
+    for _, r in df_bad.iterrows():
+        rows.append([
+            r[col_desc] if col_desc else "",
+            _fmt_int(r[col_qty]) if col_qty else "",
+            fmt_km(r[col_value]) if col_value else "",
+            _fmt_pct(r[col_pct_ne]) if col_pct_ne else "",
+            r[col_rate_maa] if col_rate_maa else "",
+            r[col_rate_mid] if col_rate_mid else "",
+            r[col_makam] if col_makam else "",
+            r[col_yield] if col_yield else "",
+            r[col_forum] if col_forum else "",
+        ])
+
+    # שורת Total (סיכומים בסיסיים)
+    if len(df_bad) > 0:
+        tot_qty   = _fmt_int(df_bad[col_qty].sum()) if col_qty else ""
+        tot_value = fmt_km(df_bad[col_value].sum()) if col_value else ""
+        # אחוזים – נשמור פשוט כסכום (או להשאיר ריק/“—” אם מעדיפים):
+        tot_pct   = _fmt_pct(df_bad[col_pct_ne].sum()) if col_pct_ne else ""
+    else:
+        tot_qty = tot_value = tot_pct = ""
+        
+        
+        # אם אין כלל נתונים – עדיין נציג שתי שורות: 'מסופק' ו-'Total' (העמודה האחרונה היא 'סיווג פורום חוב')
+    if len(rows) == 0:
+        rows.append(["", "", "", "", "", "", "", "", fix_hebrew("מסופק")])
+        rows.append(["", "", "", "", "", "", "", "", "Total"])
+
+
+    rows.append([
+        "Total",               # תאור נייר
+        tot_qty,               # כמות
+        tot_value,             # שווי נייר
+        tot_pct,               # אחוז מאשראי לא מוחרג
+        "",                    # דרוג מעלות לנייר
+        "",                    # דרוג מידרג לנייר
+        "",                    # מח"מ מחושב
+        "",                    # תשואה ברוטו
+        "מסופק",              # סיווג פורום חוב
+    ])
+
+    # === ציור העמוד ===
+    W, H = 1600, 900
+    img = Image.new("RGB", (W, H), (245, 245, 245))
+    draw = ImageDraw.Draw(img)
+
+    title_f   = load_font(60)
+    bucket_f  = load_font(40)
+    date_f    = load_font(30)
+    header_f  = load_font(20)
+    cell_f    = load_font(18)
+
+    # כותרות עליונות
+    _draw_centered(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג", W//2, 60, title_f, (20,20,20))
+    _draw_centered(draw, bucket_label, W//2, 110, bucket_f, (20,20,20))
+    _draw_centered(draw, (date_str or fix_hebrew("נכון לתאריך הדוח")), W//2, 150, date_f, (40,40,40))
+
+    # טבלה רחבה אחת
+    tbl_x = 60
+    tbl_w = W - 120
+    # 9 עמודות – חלוקה יחסית; אפשר לכוונן מעט אם צריך
+    col_fracs = [0.20, 0.07, 0.11, 0.11, 0.10, 0.10, 0.09, 0.09, 0.13]
+    col_widths = [int(tbl_w*f) for f in col_fracs]
+
+    headers = [
+        "תאור נייר",
+        "כמות",
+        "שווי נייר",
+        "אחוז מאשראי לא מוחרג",
+        "דרוג מעלות לנייר",
+        "דרוג מידרג לנייר",
+        "מח\"מ מחושב",
+        "תשואה ברוטו",
+        "סיווג פורום חוב",
+    ]
+    aligns  = ["left", "right", "right", "right", "center", "center", "center", "right", "center"]
+
+
+    cur_y = _draw_table_full(draw, tbl_x, 200, tbl_w, headers, rows, header_f, cell_f, col_fracs)
+
+
+
+    # הערה מתחת לטבלה (רווח נדיב)
+    cur_y += 28
+    note = "נכון לתאריך הדוח. אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי מנפיקים אלה"
+    _draw_centered(draw, note, W//2, cur_y, cell_f, (30,30,30))
+
+    # "סה\"כ אשראי לא מוחרג" בתחתית
+    bottom_y = H - 50
+    total_txt = "—" if total_non_excluded_value is None else fmt_km(total_non_excluded_value)
+    footer = f"סה\"כ אשראי לא מוחרג  {total_txt}"
+    _draw_centered(draw, footer, W//2, bottom_y, bucket_f, (20,20,20))
+
+    return img
+
+# ==== end of my new code ======
+
 def fmt_km(n: float, decimals: int = 2) -> str:
     try:
         n = float(n)
@@ -226,9 +1126,6 @@ def metric_late_or_delivered_count(df_case):            #שינוי סיווג �
         return int(s.nunique())
     return int(filtered.shape[0])  # fallback אם אין sec_id
 
-
-
-
 # =========================
 # Renderers
 # =========================
@@ -240,8 +1137,13 @@ def render_exec_slide(base_image_path: str, account_name_display: str, metrics: 
         x = cx - (bbox[2]-bbox[0]) // 2
         y = cy - (bbox[3]-bbox[1]) // 2
         draw.text((x, y), text, font=font, fill=fill)
-    f32 = ImageFont.truetype("arial.ttf", 32)
-    f42 = ImageFont.truetype("arial.ttf", 42)
+    # f32 = ImageFont.truetype("arial.ttf", 32)
+    # f42 = ImageFont.truetype("arial.ttf", 42)
+    
+    f32 = load_font(32)
+    f42 = load_font(42)
+
+    
     items = [
         (fix_hebrew(account_name_display), 1030, 50,  f32, (255,255,255), False),
         (f"{metrics['excluded_pct_of_portfolio']*100:.2f}%", 246, 132, f32, (255,255,255), True),
@@ -272,11 +1174,19 @@ def render_white_slide(account_name_display: str,
     slide = Image.new("RGB", (W, H), "white")
     draw = ImageDraw.Draw(slide)
 
-    title_f = ImageFont.truetype("arial.ttf", 60)
-    sub_f   = ImageFont.truetype("arial.ttf", 40)
-    box_t_f = ImageFont.truetype("arial.ttf", 28)
-    pct_f   = ImageFont.truetype("arial.ttf", 56)
-    small_f = ImageFont.truetype("arial.ttf", 26)
+    # title_f = ImageFont.truetype("arial.ttf", 60)
+    # sub_f   = ImageFont.truetype("arial.ttf", 40)
+    # box_t_f = ImageFont.truetype("arial.ttf", 28)
+    # pct_f   = ImageFont.truetype("arial.ttf", 56)
+    # small_f = ImageFont.truetype("arial.ttf", 26)
+    
+    title_f = load_font(60)
+    sub_f   = load_font(40)
+    box_t_f = load_font(28)
+    pct_f   = load_font(56)
+    small_f = load_font(26)
+
+    
 
     def draw_centered_text(text, cx, cy, fnt, fill=(0,0,0)):
         t = fix_hebrew(text)
@@ -341,16 +1251,14 @@ def render_white_slide(account_name_display: str,
         for line in lines:
             draw.text((l+pad, y), fix_hebrew(line), font=small_f, fill=(30,30,30))
             y += 40
-
-
-
+            
     draw_stats(left_x,  640, prev_bad_count, prev_bad_entries, prev_bad_exits, prev_class_changes, prev_late_or_delivered)
     draw_stats(right_x, 640, curr_bad_count, curr_bad_entries, curr_bad_exits, curr_class_changes, curr_late_or_delivered)
 
     return slide
 
 
-def render_data_tables(account_name_display: str):
+def render_data_tables_demo(account_name_display: str):
     def draw_centered_text(text, cx, cy, fnt, fill=(0,0,0)):
         t = fix_hebrew(text)
         bbox = draw.textbbox((0,0), t, font=fnt)
@@ -490,12 +1398,63 @@ def main():
                                        curr_bad_exits, prev_bad_exits,
                                        curr_class_changes, prev_class_changes,
                                        curr_late_or_delivered, prev_late_or_delivered)
-        tables_img = render_data_tables(account_name)
+        
+        case_bucket = {
+            16396: ["ארם עד 50"],
+            16397: ["ארם 50-60"],
+            16398: ["ארם 60 ומעלה"],  
+        }
+        buckets_for_this_case = case_bucket.get(case_id, ["ארם עד 50"])
+        
+        tables_imgs = []
+        bad_pages   = []
+        dist_pages = []
+
+        # נגדיר פעם אחת את התאריכים שנשתמש בהם
+        date_cur_str  = "30/06/2025"
+        date_prev_str = "31/03/2025"
+
+        for bucket_label in buckets_for_this_case:
+            # עמוד הטבלאות (העמוד הראשון)
+            tables_imgs.append(
+                render_data_tables(
+                    account_name_display=account_name,
+                    bucket_label=bucket_label,
+                    curr_df=case_curr,
+                    prev_df=case_prev,
+                    date_curr=date_cur_str,
+                    date_prev=date_prev_str,
+                )
+            )
+
+    # עמוד "תיאור חובות בעייתיים..."
+            bad_pages.append(
+                render_bad_debts_page(
+                    account_name_display=account_name,  # שים לב לשם הפרמטר
+                    bucket_label=bucket_label,          # לא 'bl' — משתמשים במשתנה של הלולאה
+                    df_curr=case_curr,
+                    date_str=date_cur_str,
+                )
+            )
+            
+            dist_pages.append(
+                render_bad_distributions_page(
+                    account_name_display=account_name,
+                    bucket_label=bucket_label,
+                    df_curr=case_curr,
+                    date_str="30/06/2025",   # או משתנה תאריך אם יש
+                    # סרגל בחירה במקום טבלה
+                )
+            )
+        # === end of my edit ===
+        
         # שמירה
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
         exec_img.save(out_png)
-        exec_img.save(out_pdf, save_all=True, append_images=[white_img, tables_img])
+
+        exec_img.save(out_pdf, save_all=True, append_images=[white_img, *tables_imgs, *bad_pages, *dist_pages])
+
         pdf_parts.append(out_pdf)
         print(f"CASE {case_id}: created {out_png}, {out_pdf}")
 
