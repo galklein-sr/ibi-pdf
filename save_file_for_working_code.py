@@ -195,7 +195,9 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
 
         col_x = x
         for i, cell in enumerate(row):
+            
             cw = col_ws[i]
+            
             txt = fix_hebrew("" if cell is None else str(cell))
             # לוודא התאמת טקסט לרוחב
             txt = ellipsize(draw, txt, cell_font, max_w=cw - 2*pad)
@@ -211,6 +213,10 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
             # קווי הפרדה
             draw.line([(col_x, cy), (col_x, cy+row_h)], fill=grid, width=1)
             col_x += cw
+            
+
+            
+            
         # קו ימין של השורה
         draw.line([(x+w, cy), (x+w, cy+row_h)], fill=grid, width=1)
         # קו תחתון
@@ -470,6 +476,8 @@ def render_bad_distributions_page(
     return img
 
 
+    
+
     # ====== My new code =======
 # ==== helpers for data-tables page ====
 
@@ -504,11 +512,99 @@ def _ensure_num(df, cols):
     return df
 
 
-def _draw_centered(draw, text, cx, y_mid, font, fill):
-    """מצייר טקסט ממורכז סביב y שהינו מרכז-אנכי (נוח לכותרות)."""
+def _draw_centered(draw, text, cx, cy, font, fill=(20, 20, 20)): #(draw, text, cx, y_mid, font, fill):
     t = fix_hebrew(text)
-    tw, th = _text_size(draw, t, font)
-    draw.text((cx - tw // 2, y_mid - th // 2), t, font=font, fill=fill)
+    bbox = draw.textbbox((0, 0), t, font=font)
+    x = cx - (bbox[2] - bbox[0]) // 2
+    y = cy - (bbox[3] - bbox[1]) // 2
+    draw.text((x, y), t, font=font, fill=fill)
+
+    
+
+# --- Donut (דונאט) ---------------------------------------------------------
+
+def _draw_donut(
+    draw, cx, cy, outer_r, inner_r,
+    segments,                 # [(label, value), ...]
+    title, title_font, label_font,
+    palette=None
+):
+    """
+    segments: [(label, value), ...] ; אם יש רק פריט אחד => 100%
+    palette:  רשימת צבעים לסגמנטים; אם None נגדיר ברירת מחדל
+    """
+    if not segments:
+        segments = [("לא", 0.0)]
+
+    if palette is None:
+        palette = [(14, 134, 255), (120, 170, 255), (180, 205, 255), (80, 140, 230)]
+
+    # כותרת מעל הדונאט
+    _draw_centered(draw, title, cx, cy - outer_r - 28, title_font, (20, 20, 20))
+
+    total = sum(float(v) for _, v in segments) or 1.0
+    bbox = [cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r]
+
+    # ציור הסגמנטים
+    start_deg = -90.0
+    for i, (lbl, val) in enumerate(segments):
+        sweep = 360.0 * (float(val) / total)
+        draw.pieslice(bbox, start_deg, start_deg + sweep, fill=palette[i % len(palette)], outline=None)
+        start_deg += sweep
+
+    # חור פנימי
+    draw.ellipse([cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r], fill=(245, 245, 245))
+
+    # תווית מתחת (הפריט הגדול ביותר)
+    label, val = max(segments, key=lambda t: float(t[1]))
+    pct = (float(val) / total) * 100.0
+    leader_y = cy + outer_r
+    draw.line([(cx, cy + outer_r - 2), (cx, leader_y + 10)], fill=(170, 170, 170), width=2)
+
+    txt = f"{fix_hebrew(label)} {val:.2f} ({pct:.0f}%)"
+    tb = draw.textbbox((0, 0), txt, font=label_font)
+    draw.text((cx - (tb[2] - tb[0]) // 2, leader_y + 14), txt, font=label_font, fill=(90, 90, 90))
+
+
+def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
+    """
+    בשלב זה: נתונים ידניים/גמישים כדי שתוכלו להזין בקלות.
+    אפשר מאוחר יותר להחליף לאוטומציה מה-DataFrame.
+    ההחזרה: מילון עם 3 מפתחות: geo / collateral / liquidity
+    כל אחד הוא [(label, value), ...]
+    """
+    # נסיון למשוך סה"כ "שווי נייר" אם עמודה קיימת, אחרת 0
+    total_val = 0.0
+    for cand in ["שווי נייר", "שווי ני\"ע", "שווי"]:
+        if cand in df_curr.columns:
+            try:
+                total_val = float(df_curr[cand].fillna(0).sum())
+            except Exception:
+                total_val = 0.0
+            break
+
+    if "50-60" in bucket_label:
+        # דוגמה לריבוי פריטים (תעדכן שמות/ערכים חופשית)
+        return {
+            "geo":        [("ישראל", total_val*0.55), ("ארה\"ב", total_val*0.45)],
+            "collateral": [("לא", total_val*0.70), ("כן", total_val*0.30)],
+            "liquidity":  [("לא", total_val*0.40), ("כן", total_val*0.60)],
+        }
+    elif "60" in bucket_label and "מעלה" in bucket_label:
+        # 100% פריט יחיד
+        return {
+            "geo":        [("ארצות הברית", total_val)],
+            "collateral": [("לא", total_val)],
+            "liquidity":  [("לא", total_val)],
+        }
+    else:
+        # 'ארם עד 50' – 100% פריט יחיד
+        return {
+            "geo":        [("ארצות הברית", total_val)],
+            "collateral": [("לא", total_val)],
+            "liquidity":  [("לא", total_val)],
+        }
+
 
 
 def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
@@ -549,6 +645,65 @@ def _draw_segmented_selector(draw, center_x, y, total_w, h, labels, font):
         lx = x + i*seg_w
         lf, lt = _fit_text_to_width(draw, lbl, font, seg_w - 16, min_size=12)
         _text_center_in_rect(draw, lt, lf, (lx+4, y+4, lx+seg_w-4, y+h-4), fill=(30,30,30))
+        
+        
+        
+def _draw_segmented_selector(
+    draw: ImageDraw.ImageDraw,
+    cx: int, y: int, width: int, height: int,
+    labels: list[str],
+    font,
+    active: int = 0,
+    border=(15, 72, 125),      # כחול כמו כותרות הטבלאות
+    bg=(255, 255, 255),
+    text=(30, 30, 30),
+    underline=(15, 72, 125),
+    radius: int = 12
+):
+    """
+    מצייר סרגל בחירה (segmented control) בכיוון RTL.
+    labels נתונה מימין→לשמאל: [label_right, label_center, label_left]
+    active = אינדקס פעיל (0=ימני, 1=אמצעי, 2=שמאלי)
+    """
+    left = cx - width // 2
+    top = y
+    right = left + width
+    bottom = top + height
+
+    # מסגרת חיצונית
+    try:
+        draw.rounded_rectangle([left, top, right, bottom], radius=radius, outline=border, width=2, fill=bg)
+    except Exception:
+        draw.rectangle([left, top, right, bottom], outline=border, width=2, fill=bg)
+
+    n = max(1, len(labels))
+    seg_w = width / n
+
+    # מצייר מחיצות ותגיות: RTL — עוברים על labels לפי האינדקסים
+    for i, raw_label in enumerate(labels):
+        # גבולות המקטע i (RTL)
+        seg_right = right - int(i * seg_w)
+        seg_left  = right - int((i + 1) * seg_w)
+
+        # מחיצות פנימיות (מלבד הקצה הימני והשמאלי)
+        if i != 0:
+            draw.line([(seg_right, top), (seg_right, bottom)], fill=border, width=2)
+
+        # טקסט – התאמה לרוחב וחישוב מרכז
+        label = fix_hebrew(raw_label)
+        max_w = int(seg_w) - 12  # padding אופקי
+        fit_font, fit_text = _fit_text_to_width(draw, label, font, max_w, min_size=12)
+
+        # מרכז הטקסט בתוך המקטע
+        tw, th = _text_size(draw, fit_text, fit_font)
+        tx = seg_left + (seg_right - seg_left - tw) // 2
+        ty = top + (height - th) // 2
+        draw.text((tx, ty), fit_text, font=fit_font, fill=text)
+
+        # קו תחתון לחלק הפעיל
+        if i == active:
+            draw.line([(seg_left + 6, bottom - 2), (seg_right - 6, bottom - 2)], fill=underline, width=3)
+
 
 
 
@@ -755,7 +910,7 @@ def render_data_tables(
     if not date_prev: date_prev = fix_hebrew("רבעון קודם")
     _draw_centered(draw, date_curr, left_x  + w_tbl // 2, 240, date_f, (20, 20, 20))  # רווח גדול יותר מה־bucket
     _draw_centered(draw, date_prev, right_x + w_tbl // 2, 240, date_f, (20, 20, 20))
-
+    
     # כותרות עמודות (שמאל→ימין) — עם מקום רחב ל"תאור ..."
     header_borrower = [
         ("אחוז מכלל התיק", 0.18),
