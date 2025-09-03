@@ -496,7 +496,7 @@ def render_bad_distributions_page(
         return rows
 
     # שורות לכל טבלה
-    rows_right = _top_rows(_find_col(df, ["דרג קבוע לנייר","דרוג קבוע לנייר","דירוג קבוע"]))
+    rows_right = _top_rows(_find_col(df, ["דרוג קבוע לנייר","דרוג קבוע לנייר","דירוג קבוע"]))
     rows_mid   = _top_rows(_find_col(df, ["תאור קבוצת לווים","שם קבוצת לווים","קבוצת לווים"]))
     rows_left  = _top_rows(_find_col(df, ["תאור ענף","ענף"]))
 
@@ -519,7 +519,7 @@ def render_bad_distributions_page(
     #   [אחוז מאשראי לא מוחרג, שווי נייר, עמודת תיאור]
     headers_left  = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור ענף"]
     headers_mid   = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור קבוצת לווים"]
-    headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרג קבוע לנייר"]
+    headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרוג קבוע לנייר"]
     fracs = [0.28, 0.22, 0.50]   # חלוקת רוחבים: אחוז/שווי/תיאור
 
     # ציור שלוש הטבלאות
@@ -532,9 +532,12 @@ def render_bad_distributions_page(
     _draw_centered(draw, note, W//2, 360, cell_f, (30,30,30))
 
     # שורת הטבלה האמצעית (בחירה) – כותרות בלבד ושורה אחת ריקה
-    headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]  # משמאל לימין
-    rows_line    = [("","","")]
-    _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
+    # headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]  # משמאל לימין
+    # rows_line    = [("","","")]
+    # _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
+    
+    selector_labels = ["סכום קבוצת לווים", "תאור נייר", "תאור קבוצת לווים"]  # מימין→שמאל
+    _draw_segmented_selector(draw, W//2, 390, 480, 44, selector_labels, cell_f, active=1)
 
     # return img
     donuts = _donut_config_for_bucket(bucket_label, df_curr)
@@ -719,26 +722,26 @@ def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f
     next_y = table_top + 38 * (1 + used_rows) + 40
     return next_y
 
-def _draw_segmented_selector(draw, center_x, y, total_w, h, labels, font):
-    """מצייר סרגל בחירה מפוצל לשלושה חלקים (ויזואלי בלבד)."""
-    x = center_x - total_w//2
-    outline = (60, 100, 160)
-    fill    = (255,255,255)
-    # רקע מעוגל
-    try:
-        draw.rounded_rectangle([x, y, x+total_w, y+h], radius=12, outline=outline, width=2, fill=fill)
-    except:
-        # fallback לריבוע רגיל אם PIL ישן
-        draw.rectangle([x, y, x+total_w, y+h], outline=outline, width=2, fill=fill)
-    # מחיצות אנכיות
-    seg_w = total_w // len(labels)
-    for i in range(1, len(labels)):
-        draw.line([(x + i*seg_w, y), (x + i*seg_w, y+h)], fill=outline, width=2)
-    # טקסטים
-    for i, lbl in enumerate(labels):
-        lx = x + i*seg_w
-        lf, lt = _fit_text_to_width(draw, lbl, font, seg_w - 16, min_size=12)
-        _text_center_in_rect(draw, lt, lf, (lx+4, y+4, lx+seg_w-4, y+h-4), fill=(30,30,30))
+# def _draw_segmented_selector(draw, center_x, y, total_w, h, labels, font):
+#     """מצייר סרגל בחירה מפוצל לשלושה חלקים (ויזואלי בלבד)."""
+#     x = center_x - total_w//2
+#     outline = (60, 100, 160)
+#     fill    = (255,255,255)
+#     # רקע מעוגל
+#     try:
+#         draw.rounded_rectangle([x, y, x+total_w, y+h], radius=12, outline=outline, width=2, fill=fill)
+#     except:
+#         # fallback לריבוע רגיל אם PIL ישן
+#         draw.rectangle([x, y, x+total_w, y+h], outline=outline, width=2, fill=fill)
+#     # מחיצות אנכיות
+#     seg_w = total_w // len(labels)
+#     for i in range(1, len(labels)):
+#         draw.line([(x + i*seg_w, y), (x + i*seg_w, y+h)], fill=outline, width=2)
+#     # טקסטים
+#     for i, lbl in enumerate(labels):
+#         lx = x + i*seg_w
+#         lf, lt = _fit_text_to_width(draw, lbl, font, seg_w - 16, min_size=12)
+#         _text_center_in_rect(draw, lt, lf, (lx+4, y+4, lx+seg_w-4, y+h-4), fill=(30,30,30))
         
         
         
