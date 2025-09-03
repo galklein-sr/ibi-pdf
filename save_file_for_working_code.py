@@ -167,16 +167,20 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
     col_ws[-1] = w - sum(col_ws[:-1])
 
     # --- כותרת טבלה ---
+    # --- כותרת טבלה ---
     col_x = x
     for i, h in enumerate(headers):
         cw = col_ws[i]
-        draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
-        txt = fix_hebrew(h)
-        # טקסט במרכז תא כותרת
-        tb = draw.textbbox((0,0), txt, font=header_font)
-        draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
-                  txt, font=header_font, fill=htext)
+        # רקע הכותרת
+        draw.rectangle([col_x, y, col_x + cw, y + head_h], fill=hfill)
+
+        # טקסט כותרת – התאמה לרוחב התא + מרכוז
+        hdr_rect = (col_x + 6, y + 6, col_x + cw - 6, y + head_h - 6)
+        lf, lt = _fit_text_to_width(draw, fix_hebrew(h), header_font, cw - 12, min_size=11)
+        _text_center_in_rect(draw, lt, lf, hdr_rect, fill=htext)
+
         col_x += cw
+
 
     # קווי הפרדה אנכיים בכותרת
     col_x = x
