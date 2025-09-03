@@ -226,7 +226,6 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
 
     return cy
 
-
 # ==== Last line RTL ====
 def _draw_footer_total(draw: ImageDraw.ImageDraw, y: int, label_he: str, amount_str: str, W: int, font) -> None:
     """
@@ -572,7 +571,7 @@ def _draw_donut(
         palette = [(14, 134, 255), (120, 170, 255), (180, 205, 255), (80, 140, 230)]
 
     # כותרת מעל הדונאט
-    _draw_centered(draw, title, cx, cy - outer_r - 10, title_font, (20, 20, 20))
+    _draw_centered(draw, title, cx, cy - outer_r - 45, title_font, (20, 20, 20))
 
     total = sum(float(v) for _, v in segments) or 1.0
     bbox = [cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r]
@@ -638,8 +637,6 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
         "collateral": _build_segments(["סוג ביטחונות", "ביטחונות", "תיאור ביטחונות"]),
         "liquidity":  _build_segments(["סחירות", "דרגת סחירות", "תיאור סחירות"]),
     }
-
-
 
 
 def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
@@ -1103,8 +1100,6 @@ def render_bad_debts_page_old(
 
 
     cur_y = _draw_table_full(draw, tbl_x, 200, tbl_w, headers, rows, header_f, cell_f, col_fracs)
-
-
 
     # הערה מתחת לטבלה (רווח נדיב)
     cur_y += 28
