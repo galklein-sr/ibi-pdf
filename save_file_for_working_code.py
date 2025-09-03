@@ -132,6 +132,61 @@ def _text_center_in_rect(draw, text, font, rect, fill=(255,255,255)):
     y = t + (h - th)//2
     draw.text((x,y), text, font=font, fill=fill)
 
+
+
+def _text_multiline_center_in_rect(draw, lines, font, rect, fill=(255,255,255), line_gap=2):
+    """מצייר מספר שורות ממורכזות (אופקי ואנכי) בתוך מלבן rect."""
+    x1, y1, x2, y2 = rect
+    line_sizes = [draw.textbbox((0,0), ln, font=font) for ln in lines]
+    line_h = max(bb[3]-bb[1] for bb in line_sizes) if line_sizes else 0
+    total_h = len(lines)*line_h + (len(lines)-1)*line_gap
+    cy = y1 + (y2 - y1 - total_h)//2
+    for ln in lines:
+        bb = draw.textbbox((0,0), ln, font=font)
+        lw = bb[2]-bb[0]
+        cx = x1 + (x2 - x1 - lw)//2
+        draw.text((cx, cy), ln, font=font, fill=fill)
+        cy += line_h + line_gap
+
+
+def _fit_or_wrap_header(draw, text, base_font, max_w, max_h, min_size=14):
+    """
+    מנסה קודם שורה אחת עד שלא יורדים מתחת ל-min_size.
+    אם עדיין לא נכנס – שובר לשתי שורות ומקטין מעט (לא פחות מ-min_size).
+    מחזיר (font, [lines]).
+    """
+    text = fix_hebrew(text)
+
+    # נסה שורה אחת עם הגבלת מינימום
+    f, t = _fit_text_to_width(draw, text, base_font, max_w, min_size=min_size)
+    bb = draw.textbbox((0,0), t, font=f)
+    if (bb[2]-bb[0]) <= max_w and (bb[3]-bb[1]) <= max_h:
+        return f, [t]
+
+    # שבירה לשתי שורות: ננסה כל נקודת שבירה בין מילים
+    words = text.split(" ")
+    if len(words) < 2:
+        return f, [t]  # אין איפה לשבור
+
+    # נעדיף פונט לא קטן מ-min_size
+    for size in range(base_font.size, min_size-1, -1):
+        f_try = load_font(size)
+        # נבדוק כמה פיצולים לשתי שורות עד שזה נכנס
+        for i in range(1, len(words)):
+            l1 = " ".join(words[:i])
+            l2 = " ".join(words[i:])
+            bb1 = draw.textbbox((0,0), l1, font=f_try)
+            bb2 = draw.textbbox((0,0), l2, font=f_try)
+            w1, w2 = bb1[2]-bb1[0], bb2[2]-bb2[0]
+            h1, h2 = bb1[3]-bb1[1], bb2[3]-bb2[1]
+            total_h = h1 + h2 + 2  # מרווח קטן בין השורות
+            if max(w1, w2) <= max_w and total_h <= max_h:
+                return f_try, [l1, l2]
+
+    # לא הצלחנו – נחזור לשורה אחת עם min_size (יגיע אליפסיס אם יש לך)
+    f_min = load_font(min_size)
+    return f_min, [ellipsize(draw, text, f_min, max_w)]
+
     
     
     # ========================= new page , table two =========================
@@ -174,12 +229,15 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         # רקע הכותרת
         draw.rectangle([col_x, y, col_x + cw, y + head_h], fill=hfill)
 
-        # טקסט כותרת – התאמה לרוחב התא + מרכוז
+        # טקסט כותרת – נסיון שורה אחת, ואם צריך שבירה לשתי שורות, לא מתחת ל-14px
         hdr_rect = (col_x + 6, y + 6, col_x + cw - 6, y + head_h - 6)
-        lf, lt = _fit_text_to_width(draw, fix_hebrew(h), header_font, cw - 12, min_size=11)
-        _text_center_in_rect(draw, lt, lf, hdr_rect, fill=htext)
+        fit_font, lines = _fit_or_wrap_header(draw, h, header_font,
+                                            max_w=(cw - 12), max_h=(head_h - 12),
+                                            min_size=14)
+        _text_multiline_center_in_rect(draw, lines, fit_font, hdr_rect, fill=htext)
 
         col_x += cw
+
 
 
     # קווי הפרדה אנכיים בכותרת
