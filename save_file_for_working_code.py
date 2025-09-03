@@ -406,6 +406,8 @@ def render_bad_distributions_page(
     sub_f    = load_font(40)
     header_f = load_font(22)
     cell_f   = load_font(20)
+    donut_title_f = load_font(28)
+    donut_label_f = load_font(18)
 
     # כותרות עמוד
     t1 = "תיאור חובות בעייתיים בתיק אשראי לא מוחרג"
@@ -477,7 +479,7 @@ def render_bad_distributions_page(
     donuts = _donut_config_for_bucket(bucket_label, df_curr)
 
     # מרכזים ורדיוסים
-    cy = 620
+    cy = 720
     cx_right  = int(W * 0.83)   # ימני: חשיפה גאוגרפית
     cx_mid    = int(W * 0.50)   # אמצעי: ביטחונות
     cx_left   = int(W * 0.17)   # שמאלי: סחירות
@@ -488,26 +490,22 @@ def render_bad_distributions_page(
     dark_blue = [(19, 30, 138)]
 
     _draw_donut(
-        draw, cx_right, cy, ro, ri,
-        donuts["geo"],
-        "התפלגות חוב בעייתי על פי חשיפה גאוגרפית",
-        sub_f, cell_f,
-        palette=pale_blue
-    )
+        draw, cx_right, cy, ro, ri, donuts["geo"],
+            "התפלגות חוב בעייתי על פי חשיפה גאוגרפית",
+            donut_title_f, donut_label_f, palette=pale_blue
+            )
+
     _draw_donut(
-        draw, cx_mid, cy, ro, ri,
-        donuts["collateral"],
-        "התפלגות חוב בעייתי על פי ביטחונות",
-        sub_f, cell_f,
-        palette=dark_blue
-)
+        draw, cx_mid, cy, ro, ri, donuts["collateral"],
+            "התפלגות חוב בעייתי על פי ביטחונות",
+            donut_title_f, donut_label_f, palette=dark_blue
+            )
+    
     _draw_donut(
-        draw, cx_left, cy, ro, ri,
-        donuts["liquidity"],
-        "התפלגות חוב בעייתי על פי סחירות",
-        sub_f, cell_f,
-        palette=pale_blue
-)
+        draw, cx_left, cy, ro, ri, donuts["liquidity"],
+            "התפלגות חוב בעייתי על פי סחירות",
+            donut_title_f, donut_label_f, palette=pale_blue
+            )
 
     return img
 
@@ -574,7 +572,7 @@ def _draw_donut(
         palette = [(14, 134, 255), (120, 170, 255), (180, 205, 255), (80, 140, 230)]
 
     # כותרת מעל הדונאט
-    _draw_centered(draw, title, cx, cy - outer_r - 28, title_font, (20, 20, 20))
+    _draw_centered(draw, title, cx, cy - outer_r - 10, title_font, (20, 20, 20))
 
     total = sum(float(v) for _, v in segments) or 1.0
     bbox = [cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r]
@@ -597,7 +595,7 @@ def _draw_donut(
 
     txt = f"{fix_hebrew(label)} {val:.2f} ({pct:.0f}%)"
     tb = draw.textbbox((0, 0), txt, font=label_font)
-    draw.text((cx - (tb[2] - tb[0]) // 2, leader_y + 14), txt, font=label_font, fill=(90, 90, 90))
+    draw.text((cx - (tb[2] - tb[0]) // 2, leader_y + 20), txt, font=label_font, fill=(90, 90, 90))
 
 
 
