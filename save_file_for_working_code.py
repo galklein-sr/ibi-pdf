@@ -473,10 +473,43 @@ def render_bad_distributions_page(
     rows_line    = [("","","")]
     _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
 
+    # return img
+    donuts = _donut_config_for_bucket(bucket_label, df_curr)
+
+    # מרכזים ורדיוסים
+    cy = 620
+    cx_right  = int(W * 0.83)   # ימני: חשיפה גאוגרפית
+    cx_mid    = int(W * 0.50)   # אמצעי: ביטחונות
+    cx_left   = int(W * 0.17)   # שמאלי: סחירות
+    ro, ri = 115, 65
+
+    # פלטות צבע
+    pale_blue = [(14, 134, 255)]
+    dark_blue = [(19, 30, 138)]
+
+    _draw_donut(
+        draw, cx_right, cy, ro, ri,
+        donuts["geo"],
+        "התפלגות חוב בעייתי על פי חשיפה גאוגרפית",
+        sub_f, cell_f,
+        palette=pale_blue
+    )
+    _draw_donut(
+        draw, cx_mid, cy, ro, ri,
+        donuts["collateral"],
+        "התפלגות חוב בעייתי על פי ביטחונות",
+        sub_f, cell_f,
+        palette=dark_blue
+)
+    _draw_donut(
+        draw, cx_left, cy, ro, ri,
+        donuts["liquidity"],
+        "התפלגות חוב בעייתי על פי סחירות",
+        sub_f, cell_f,
+        palette=pale_blue
+)
+
     return img
-
-
-    
 
     # ====== My new code =======
 # ==== helpers for data-tables page ====
@@ -528,6 +561,7 @@ def _draw_donut(
     segments,                 # [(label, value), ...]
     title, title_font, label_font,
     palette=None
+    #donuts = _donut_config_for_bucket(bucket_label, df_curr)
 ):
     """
     segments: [(label, value), ...] ; אם יש רק פריט אחד => 100%
@@ -566,44 +600,47 @@ def _draw_donut(
     draw.text((cx - (tb[2] - tb[0]) // 2, leader_y + 14), txt, font=label_font, fill=(90, 90, 90))
 
 
-def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
-    """
-    בשלב זה: נתונים ידניים/גמישים כדי שתוכלו להזין בקלות.
-    אפשר מאוחר יותר להחליף לאוטומציה מה-DataFrame.
-    ההחזרה: מילון עם 3 מפתחות: geo / collateral / liquidity
-    כל אחד הוא [(label, value), ...]
-    """
-    # נסיון למשוך סה"כ "שווי נייר" אם עמודה קיימת, אחרת 0
-    total_val = 0.0
-    for cand in ["שווי נייר", "שווי ני\"ע", "שווי"]:
-        if cand in df_curr.columns:
-            try:
-                total_val = float(df_curr[cand].fillna(0).sum())
-            except Exception:
-                total_val = 0.0
-            break
 
-    if "50-60" in bucket_label:
-        # דוגמה לריבוי פריטים (תעדכן שמות/ערכים חופשית)
-        return {
-            "geo":        [("ישראל", total_val*0.55), ("ארה\"ב", total_val*0.45)],
-            "collateral": [("לא", total_val*0.70), ("כן", total_val*0.30)],
-            "liquidity":  [("לא", total_val*0.40), ("כן", total_val*0.60)],
-        }
-    elif "60" in bucket_label and "מעלה" in bucket_label:
-        # 100% פריט יחיד
-        return {
-            "geo":        [("ארצות הברית", total_val)],
-            "collateral": [("לא", total_val)],
-            "liquidity":  [("לא", total_val)],
-        }
-    else:
-        # 'ארם עד 50' – 100% פריט יחיד
-        return {
-            "geo":        [("ארצות הברית", total_val)],
-            "collateral": [("לא", total_val)],
-            "liquidity":  [("לא", total_val)],
-        }
+
+def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
+    # סינון לבקט ארם הרלוונטי + הסרת מוחרגים
+    df = _filter_aram_bucket(df_curr.copy(), bucket_label)
+    if 'sub_afik' in df.columns:
+        df = df[~df['sub_afik'].isin(EXCLUDED_SUB_AFIK)]
+
+    val_col = _find_col(df, ["שווי נייר", "שווי", "value"])
+
+    def _build_segments(col_candidates):
+        col = _find_col(df, col_candidates)
+        if not col or df.empty:
+            # ברירת מחדל: מקטע יחיד 100%
+            return [("100%", 1.0)]
+        if not val_col:
+            # בלי עמודת סכום – ספר פריטים
+            s = df[col].fillna("לא ידוע").value_counts()
+            total = float(s.sum()) or 1.0
+            top = s.head(3)
+            segs = [(str(k), float(v)) for k, v in top.items()]
+            other = total - float(top.sum())
+            if other > 0:
+                segs.append(("אחר", other))
+            return segs
+        # עם סכום: TOP-3 לפי סכום
+        g = df.groupby(col, dropna=False)[val_col].sum().sort_values(ascending=False)
+        total = float(g.sum()) or 1.0
+        top = g.head(3)
+        segs = [(str(k), float(v)) for k, v in top.items()]
+        other = total - float(top.sum())
+        if other > 0:
+            segs.append(("אחר", other))
+        return segs
+
+    return {
+        "geo":        _build_segments(["חשיפה גאוגרפית", "מרחב גאוגרפי", "אזור גאוגרפי"]),
+        "collateral": _build_segments(["סוג ביטחונות", "ביטחונות", "תיאור ביטחונות"]),
+        "liquidity":  _build_segments(["סחירות", "דרגת סחירות", "תיאור סחירות"]),
+    }
+
 
 
 
