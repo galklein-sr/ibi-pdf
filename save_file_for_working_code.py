@@ -971,20 +971,18 @@ def render_bad_debts_page_alt(
         donut_title_f, donut_label_f,
         palette=pale_blue
     )
-
     
-
     return img
 
 
-def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
+def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns, gap=24):
     t = fix_hebrew(title)
     tw, th = _text_size(draw, t, sub_font)
     _draw_centered(draw, title, x + w_tbl // 2, top_y + th // 2, sub_font, (0, 0, 0))
     table_top = top_y + th + 16
     _draw_table(draw, x, table_top, w_tbl, 38, header, rows, header_f, cell_f, aligns=aligns)
     used_rows = min(3, len(rows))
-    next_y = table_top + 38 * (1 + used_rows) + 40
+    next_y = table_top + 38 * (1 + used_rows) + gap  #+ 35
     return next_y
 
 def _draw_table(draw, x, y, w, row_h, header, rows, header_f, cell_f, aligns=None):
@@ -1089,15 +1087,15 @@ def render_bad_distributions_page(
 
     # שמאל (נוכחי)
     yL = 230
-    yL = _draw_section(draw, left_x,  yL, w_tbl, "לווה יחיד",   sub_f, header_borrower, left_borrowers, header_f, cell_f, aligns)
-    yL = _draw_section(draw, left_x,  yL, w_tbl, "ענפים",       sub_f, header_sector,   left_sectors,   header_f, cell_f, aligns)
-    _  = _draw_section(draw, left_x,  yL, w_tbl, "קבוצת לווים", sub_f, header_group,    left_groups,    header_f, cell_f, aligns)
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "לווה יחיד",   sub_f, header_borrower, left_borrowers, header_f, cell_f, aligns, gap=40)
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "ענפים",       sub_f, header_sector,   left_sectors,   header_f, cell_f, aligns, gap=40)
+    _  = _draw_section(draw, left_x,  yL, w_tbl, "קבוצת לווים", sub_f, header_group,    left_groups,    header_f, cell_f, aligns, gap=40)
 
     # ימין (קודם)
     yR = 230
-    yR = _draw_section(draw, right_x, yR, w_tbl, "לווה יחיד",   sub_f, header_borrower, right_borrowers, header_f, cell_f, aligns)
-    yR = _draw_section(draw, right_x, yR, w_tbl, "ענפים",       sub_f, header_sector,   right_sectors,   header_f, cell_f, aligns)
-    _  = _draw_section(draw, right_x, yR, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns)
+    yR = _draw_section(draw, right_x, yR, w_tbl, "לווה יחיד",   sub_f, header_borrower, right_borrowers, header_f, cell_f, aligns, gap=40)
+    yR = _draw_section(draw, right_x, yR, w_tbl, "ענפים",       sub_f, header_sector,   right_sectors,   header_f, cell_f, aligns, gap=40)
+    _  = _draw_section(draw, right_x, yR, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns, gap=40)
 
     return img
 
