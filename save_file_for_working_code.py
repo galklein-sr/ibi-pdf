@@ -211,14 +211,28 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
     col_ws = [int(w*f) for f in col_fracs]
     col_ws[-1] = w - sum(col_ws[:-1])
     col_x = x
+    # for i, h in enumerate(headers):
+    #     cw = col_ws[i]
+    #     draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
+    #     txt = fix_hebrew(h)
+    #     tb = draw.textbbox((0,0), txt, font=header_font)
+    #     draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
+    #               txt, font=header_font, fill=htext)
+    #     col_x += cw
+    
     for i, h in enumerate(headers):
         cw = col_ws[i]
         draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
-        txt = fix_hebrew(h)
-        tb = draw.textbbox((0,0), txt, font=header_font)
-        draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
-                  txt, font=header_font, fill=htext)
+    # טקסט כותרת מתאים-לרוחב וממורכז
+        _draw_text_fit(
+            draw, h, col_x, y, cw, head_h,
+            base_size=getattr(header_font, "size", 22),
+            min_size=12,
+            color=htext,
+            align="center",
+        )
         col_x += cw
+    
     col_x = x
     for i in range(len(headers)+1):
         draw.line([(col_x, y), (col_x, y+head_h)], fill=grid, width=1)
@@ -284,6 +298,19 @@ def _draw_centered(draw, text, cx, cy, font, fill=(20, 20, 20)):
     y = cy - (bbox[3]-bbox[1]) // 2
     draw.text((x, y), t, font=font, fill=fill)
     
+def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_size=14, color=(20,20,20)):
+    """מצייר טקסט ממורכז סביב y_center, ומקטין פונט עד שהטקסט נכנס לרוחב max_width."""
+    t = fix_hebrew(text)
+    size = int(base_size)
+    f = load_font(size)
+    # מקטינים עד שנכנס לרוחב
+    while size > min_size and draw.textbbox((0, 0), t, font=f)[2] > max_width:
+        size -= 1
+        f = load_font(size)
+    tw, th = _text_size(draw, t, f)
+    draw.text((cx - tw // 2, y_center - th // 2), t, font=f, fill=color)
+
+    
     
     
 # --- Donut (דונאט) ---------------------------------------------------------
@@ -304,7 +331,13 @@ def _draw_donut(
         palette = [(14, 134, 255), (120, 170, 255), (180, 205, 255), (80, 140, 230)]
 
     # כותרת מעל הדונאט
-    _draw_centered(draw, title, cx, cy - outer_r - 45, title_font, (20, 20, 20))
+    # _draw_centered(draw, title, cx, cy - outer_r - 45, title_font, (20, 20, 20))
+    # כותרת מעל הדונאט – התאמה אוטומטית לרוחב הדונאט
+    title_y = cy - outer_r - 36
+    max_w   = int(outer_r * 2)          # קוטר הדונאט
+    base_sz = getattr(title_font, "size", 28)
+    _draw_centered_fit(draw, title, cx, title_y, max_w, base_size=base_sz, min_size=16, color=(20,20,20))
+
 
     total = sum(float(v) for _, v in segments) or 1.0
     bbox = [cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r]
