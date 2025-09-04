@@ -4,6 +4,7 @@ from bidi.algorithm import get_display
 import arabic_reshaper
 from PyPDF2 import PdfMerger
 import sys, os
+from pathlib import Path
 
 # =========================
 # Config
@@ -21,9 +22,53 @@ EXCLUDED_SUB_AFIK = {210,211,220,230,240,241,310,311,312,315,326,354,360,405,407
                      346,359,387,391,392,395,398,399,412}
 DEFAULT_IDS = [16396, 16397, 16398]
 
+
+
+# --- Branding assets (לוגו + פס יצירת קשר) ---
+LOGO_PATH   = os.path.join("branding", "logo.png")
+FOOTER_PATH = os.path.join("branding", "about.png")
+
+def _safe_open_rgba(path):
+    try:
+        if path and os.path.exists(path):
+            return Image.open(path).convert("RGBA")
+    except Exception:
+        pass
+    return None
+
+def add_branding(img: Image.Image,
+                 logo_rel_h=0.12,        # גובה הלוגו ביחס לגובה הדף (12%)
+                 footer_h=58,            # גובה פס יצירת קשר בפיקסלים
+                 pad_left=28, pad_top=24, pad_bottom=18):
+    """
+    מדביק לוגו בפינה שמאל-עליונה ופס 'יצירת קשר' בתחתית הדף.
+    עובד בזהירות: אם הקובץ לא נמצא—מדלג.
+    """
+    W, H = img.size
+    logo = _safe_open_rgba(LOGO_PATH)
+    if logo:
+        # התאמת גובה יחסית לדף ושמירת יחס
+        target_h = int(H * logo_rel_h)
+        ratio = target_h / logo.height
+        logo = logo.resize((int(logo.width * ratio), target_h), Image.LANCZOS)
+        img.paste(logo, (pad_left, pad_top), logo)
+
+    footer = _safe_open_rgba(FOOTER_PATH)
+    if footer:
+        # התאמת גובה קבוע ושמירת יחס, מרכזים לרוחב
+        ratio = footer_h / footer.height
+        fw = int(footer.width * ratio)
+        footer = footer.resize((fw, footer_h), Image.LANCZOS)
+        x = (W - footer.width) // 2
+        y = H - footer.height - pad_bottom
+        img.paste(footer, (x, y), footer)
+
+
+
 # =========================
 # Helpers
 # =========================
+
 def fix_hebrew(text: str) -> str:
     try:
         return get_display(arabic_reshaper.reshape(str(text)))
@@ -52,6 +97,7 @@ def fmt_pct(v: float | None) -> str:
         return f"{float(v)*100:.2f}%"
     except Exception:
         return "--%"
+    
 
 def ellipsize(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     t = fix_hebrew(str(text))
@@ -1210,12 +1256,43 @@ def main():
                     date_str=date_cur_str,
                 )
             )
+            
+            # tables_imgs.append(
+            #     render_data_tables(
+            #         account_name_display=account_name,
+            #         bucket_label=bucket_label,
+            #         curr_df=case_curr,
+            #         prev_df=case_prev,
+            #         date_curr=date_cur_str,
+            #         date_prev=date_prev_str,
+            #     )
+            # )
 
         # שמירה
+        # לפני save_all:
+
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
+        add_branding(exec_img)
+        add_branding(white_img)
+        for _img in dist_pages + tables_imgs + bad_pages:
+            add_branding(_img)
+            
+            
         exec_img.save(out_png)
-        exec_img.save(out_pdf, save_all=True, append_images=[white_img, *tables_imgs, *bad_pages, *dist_pages])
+        # exec_img.save(out_pdf, save_all=True, append_images=[white_img, *tables_imgs, *bad_pages, *dist_pages])
+        exec_img.save(
+            out_pdf,
+            save_all=True,
+            append_images=[
+                *dist_pages,          # 1) עיגולים/התפלגויות
+                white_img,            # 2) שינוי סיווג
+                *tables_imgs,         # 3) ניתוח חשיפות (טבלאות)
+                *bad_pages[1::2],         # 4) דף "מסופק/Total"  (אם זה ההפך אצלך — החלף סדר)
+                *bad_pages[0::2],         # 5) דף "מלבן + דונט"
+        ],
+    )
+
         pdf_parts.append(out_pdf)
         print(f"CASE {case_id}: created {out_png}, {out_pdf}")
 
@@ -1229,6 +1306,118 @@ def main():
         print(f"created merged PDF: {merged_path}")
     else:
         print("did not create any PDF files.")
+        
+    print("LOGO exists:", Path(LOGO_PATH).exists(), LOGO_PATH)
+    print("FOOTER exists:", Path(FOOTER_PATH).exists(), FOOTER_PATH)
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+############ i need to add this function 
+# def render_data_tables(
+#     account_name_display: str,
+#     bucket_label: str,
+#     curr_df: pd.DataFrame,
+#     prev_df: pd.DataFrame | None,
+#     date_curr: str | None,
+#     date_prev: str | None
+# ) -> Image.Image:
+#     """
+#     דף: 'ניתוח חשיפות מהותיות בתיק אשראי – השוואה תקופתית'
+#     שמאל = רבעון נוכחי, ימין = רבעון קודם
+#     """
+#     # --- עזר בטוח ל-top3 (גם אם אין prev) ---
+#     def _safe_top3(df: pd.DataFrame, col: str | None):
+#         if df is None or col is None:
+#             return []
+#         try:
+#             return _compute_top3(df, col)
+#         except Exception:
+#             return []
+
+#     # --- איתור עמודות ---
+#     borrower_col = _find_col(curr_df, ["תאור מנפיק", "תיאור מנפיק", "לווה"])
+#     sector_col   = _find_col(curr_df, ["תאור ענף", "תיאור ענף", "ענף"])
+#     group_col    = _find_col(curr_df, ["תאור קבוצת לווים", "שם קבוצת לווים", "קבוצת לווים"])
+
+#     cur_borrowers = _safe_top3(curr_df, borrower_col)
+#     cur_sectors   = _safe_top3(curr_df, sector_col)
+#     cur_groups    = _safe_top3(curr_df, group_col)
+
+#     prv_borrowers = _safe_top3(prev_df, borrower_col)
+#     prv_sectors   = _safe_top3(prev_df, sector_col)
+#     prv_groups    = _safe_top3(prev_df, group_col)
+
+#     # --- קנבס ו-פונטים ---
+#     W, H = 1600, 900
+#     img  = Image.new("RGB", (W, H), (245, 245, 245))
+#     draw = ImageDraw.Draw(img)
+
+#     title_f  = load_font(60)
+#     sub_f    = load_font(40)
+#     date_f   = load_font(36)
+#     header_f = load_font(20)
+#     cell_f   = load_font(18)
+
+#     # כותרות עליונות
+#     _draw_centered(draw, "ניתוח חשיפות מהותיות בתיק אשראי – השוואה תקופתית", W // 2, 70, title_f, (20, 20, 20))
+#     _draw_centered(draw, bucket_label, W // 2, 120, sub_f, (20, 20, 20))
+
+#     left_x, right_x, w_tbl = 120, 840, 560
+
+#     if not date_curr: date_curr = fix_hebrew("רבעון נוכחי")
+#     if not date_prev: date_prev = fix_hebrew("רבעון קודם")
+#     _draw_centered(draw, date_curr, left_x  + w_tbl // 2, 170, date_f, (20, 20, 20))
+#     _draw_centered(draw, date_prev, right_x + w_tbl // 2, 170, date_f, (20, 20, 20))
+
+#     # כותרות טבלאות (משמאל לימין)
+#     headers_borrower = ["אחוז מכלל התיק", "אחוז מתיק אשראי לא מוחרג", "תאור מנפיק"]
+#     headers_sector   = ["אחוז מכלל התיק", "אחוז מתיק אשראי לא מוחרג", "תאור ענף"]
+#     headers_group    = ["אחוז מכלל התיק", "אחוז מתיק אשראי לא מוחרג", "תאור קבוצת לווים"]
+#     col_fracs = [0.20, 0.32, 0.48]
+
+#     def _rows(top3_list):
+#         rows = []
+#         for r in (top3_list or [])[:3]:
+#             rows.append((
+#                 fmt_pct(r.get("pct_total", 0.0)),
+#                 fmt_pct(r.get("pct_non_excluded", 0.0)),
+#                 str(r.get("label", "")),
+#             ))
+#         # הבטח שלוש שורות גם אם יש פחות נתונים
+#         while len(rows) < 3:
+#             rows.append(("", "", ""))
+#         return rows
+
+#     # --- צד שמאל (נוכחי) ---
+#     yL = 215
+#     _draw_centered(draw, "לווה יחיד", left_x + w_tbl // 2, yL - 28, sub_f, (0, 0, 0))
+#     yL = _draw_table_full(draw, left_x, yL, w_tbl, headers_borrower, _rows(cur_borrowers), header_f, cell_f, col_fracs)
+
+#     yL += 30
+#     _draw_centered(draw, "ענפים", left_x + w_tbl // 2, yL - 28, sub_f, (0, 0, 0))
+#     yL = _draw_table_full(draw, left_x, yL, w_tbl, headers_sector,   _rows(cur_sectors),   header_f, cell_f, col_fracs)
+
+#     yL += 30
+#     _draw_centered(draw, "קבוצת לווים", left_x + w_tbl // 2, yL - 28, sub_f, (0, 0, 0))
+#     _   = _draw_table_full(draw, left_x, yL, w_tbl, headers_group,   _rows(cur_groups),    header_f, cell_f, col_fracs)
+
+#     # --- צד ימין (קודם) ---
+#     yR = 215
+#     _draw_centered(draw, "לווה יחיד", right_x + w_tbl // 2, yR - 28, sub_f, (0, 0, 0))
+#     yR = _draw_table_full(draw, right_x, yR, w_tbl, headers_borrower, _rows(prv_borrowers), header_f, cell_f, col_fracs)
+
+#     yR += 30
+#     _draw_centered(draw, "ענפים", right_x + w_tbl // 2, yR - 28, sub_f, (0, 0, 0))
+#     yR = _draw_table_full(draw, right_x, yR, w_tbl, headers_sector,   _rows(prv_sectors),   header_f, cell_f, col_fracs)
+
+#     yR += 30
+#     _draw_centered(draw, "קבוצת לווים", right_x + w_tbl // 2, yR - 28, sub_f, (0, 0, 0))
+#     _   = _draw_table_full(draw, right_x, yR, w_tbl, headers_group,   _rows(prv_groups),    header_f, cell_f, col_fracs)
+
+#     return img
