@@ -23,8 +23,7 @@ EXCLUDED_SUB_AFIK = {210,211,220,230,240,241,310,311,312,315,326,354,360,405,407
 DEFAULT_IDS = [16396, 16397, 16398]
 
 
-
-# --- Branding assets (לוגו + פס יצירת קשר) ---
+# לוגו + פס יצירת קשר בתחתית
 LOGO_PATH   = os.path.join("branding", "logo.png")
 FOOTER_PATH = os.path.join("branding", "about.png")
 
@@ -36,34 +35,55 @@ def _safe_open_rgba(path):
         pass
     return None
 
-def add_branding(img: Image.Image,
-                 logo_rel_h=0.12,        # גובה הלוגו ביחס לגובה הדף (12%)
-                 footer_h=58,            # גובה פס יצירת קשר בפיקסלים
-                 pad_left=28, pad_top=24, pad_bottom=18):
-    """
-    מדביק לוגו בפינה שמאל-עליונה ופס 'יצירת קשר' בתחתית הדף.
-    עובד בזהירות: אם הקובץ לא נמצא—מדלג.
-    """
+def add_branding(
+    img: Image.Image,
+    logo_rel_h=0.08,      # היה 0.12 – מכווצים את הלוגו ~8% מגובה הדף
+    footer_rel_h=0.052,   # במקום גובה קבוע בפיקסלים – ~5.2% מגובה הדף
+    pad_left=22, pad_top=18, pad_bottom=12,
+    wipe_footer_bg=True,  # צובע פס רקע בהיר לפני הדבקת הפוטר כדי שלא תהיה חפיפה ויזואלית
+):
     W, H = img.size
+    draw = ImageDraw.Draw(img)
+
+    # --- לוגו ---
     logo = _safe_open_rgba(LOGO_PATH)
     if logo:
-        # התאמת גובה יחסית לדף ושמירת יחס
+        # גובה יעד יחסי ושמירת יחס תמונה
         target_h = int(H * logo_rel_h)
         ratio = target_h / logo.height
-        logo = logo.resize((int(logo.width * ratio), target_h), Image.LANCZOS)
+        lw = int(logo.width * ratio)
+        # מגבלת רוחב יחסית לדף (כדי לא לחרוג לצדדים)
+        max_lw = int(W * 0.23)
+        if lw > max_lw:
+            ratio = max_lw / logo.width
+            target_h = int(logo.height * ratio)
+            lw = max_lw
+        logo = logo.resize((lw, target_h), Image.LANCZOS)
         img.paste(logo, (pad_left, pad_top), logo)
 
+    # --- פוטר/פס יצירת קשר ---
     footer = _safe_open_rgba(FOOTER_PATH)
     if footer:
-        # התאמת גובה קבוע ושמירת יחס, מרכזים לרוחב
-        ratio = footer_h / footer.height
+        # גובה יעד יחסי + שמירת יחס + מגבלת רוחב
+        target_h = int(H * footer_rel_h)
+        ratio = target_h / footer.height
         fw = int(footer.width * ratio)
-        footer = footer.resize((fw, footer_h), Image.LANCZOS)
+        max_fw = int(W * 0.72)  # שלא ייקח יותר מדי רוחב
+        if fw > max_fw:
+            ratio = max_fw / footer.width
+            target_h = int(footer.height * ratio)
+            fw = max_fw
+        footer = footer.resize((fw, target_h), Image.LANCZOS)
+
         x = (W - footer.width) // 2
         y = H - footer.height - pad_bottom
+
+        # מפנים פס רקע בהיר לפני שמדביקים את הפוטר – כדי שלא ייראו טקסטים/גרפים מתחתיו
+        if wipe_footer_bg:
+            band_pad = 8
+            draw.rectangle([0, max(0, y - band_pad), W, H], fill=(245, 245, 245))
+
         img.paste(footer, (x, y), footer)
-
-
 
 # =========================
 # Helpers
@@ -342,7 +362,7 @@ def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_si
     tw, th = _text_size(draw, t, f)
     draw.text((cx - tw // 2, y_center - th // 2), t, font=f, fill=color)
 
-# --- Donut (דונאט) ---------------------------------------------------------
+# --- Donut (דונאט) ---
 def _draw_donut(
     draw, cx, cy, outer_r, inner_r,
     segments,                 # [(label, value), ...]
@@ -1312,10 +1332,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
 
 
 ############ i need to add this function 
