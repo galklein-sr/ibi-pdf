@@ -82,6 +82,10 @@ def add_branding(
 
         img.paste(footer, (x, y), footer)
 
+# שוליים שמורים ל“מותג” (פוטר+לוגו) – פיקסליזציה לדף 1600x900
+SAFE_TOP = 80           # אם צריך בהמשך
+SAFE_BOTTOM = 110       # ~ גובה הפוטר + ריווח קטן
+
 
 # =========================
 # Helpers
@@ -901,7 +905,8 @@ def render_bad_debts_page(account_name_display: str,
     tb2 = draw.textbbox((0,0), val, font=small_f)
     gap = 35
     cx = W//2 - ( (tb1[2]-tb1[0]) + gap + (tb2[2]-tb2[0]) )//2
-    yb = H - 90
+    #yb = H - 90
+    yb = H - SAFE_BOTTOM - 10
     draw.text((cx, yb), bt, font=small_f, fill=(20,20,20))
     draw.text((cx + (tb1[2]-tb1[0]) + gap, yb), val, font=small_f, fill=(20,20,20))
 
@@ -1023,7 +1028,11 @@ def render_bad_debts_page_alt(
 
     donuts = _donut_config_for_bucket(bucket_label, df_curr)
     # מרכזים ורדיוסים
-    cy = 720
+    # cy = 720
+    ro, ri = 110, 64            # אפשר להשאיר כפי שיש אצלך אם זה ערך מעט שונה
+    leader_gap = 36             # מרווח קו/תווית מתחת לעיגול
+    cy = H - SAFE_BOTTOM - (ro + leader_gap)
+    
     cx_left   = int(W * 0.17)   # שמאלי: סחירות
     ro, ri = 115, 65
     cx_mid    = int(W * 0.50)   # אמצעי: ביטחונות
@@ -1287,10 +1296,10 @@ def main():
         # שמירה
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
-        add_branding(exec_img)
-        add_branding(white_img)
+        add_branding(exec_img, logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
+        add_branding(white_img, logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
         for _img in dist_pages + tables_imgs + bad_pages:
-            add_branding(_img)
+            add_branding(_img,   logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
             
             
         exec_img.save(out_png)
