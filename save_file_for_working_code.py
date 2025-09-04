@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from PIL import Image, ImageDraw, ImageFont
 import pandas as pd
 from bidi.algorithm import get_display
@@ -73,8 +72,6 @@ def ellipsize_raw(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeType
     return t + "…"
 
 
-#===== new =====
-
 def _is_numeric_text(s: str) -> bool:
     if s is None:
         return False
@@ -90,9 +87,6 @@ def _is_numeric_text(s: str) -> bool:
     except Exception:
         return False
 
-
-
-#===== end of fixing hebrew text =====
 def _draw_text_fit(draw, text, x, y, w, h,
                    base_size=20, min_size=12,
                    color=(255,255,255), align="center"):
@@ -211,14 +205,6 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
     col_ws = [int(w*f) for f in col_fracs]
     col_ws[-1] = w - sum(col_ws[:-1])
     col_x = x
-    # for i, h in enumerate(headers):
-    #     cw = col_ws[i]
-    #     draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
-    #     txt = fix_hebrew(h)
-    #     tb = draw.textbbox((0,0), txt, font=header_font)
-    #     draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
-    #               txt, font=header_font, fill=htext)
-    #     col_x += cw
     
     for i, h in enumerate(headers):
         cw = col_ws[i]
@@ -310,9 +296,6 @@ def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_si
     tw, th = _text_size(draw, t, f)
     draw.text((cx - tw // 2, y_center - th // 2), t, font=f, fill=color)
 
-    
-    
-    
 # --- Donut (דונאט) ---------------------------------------------------------
 def _draw_donut(
     draw, cx, cy, outer_r, inner_r,
@@ -401,8 +384,6 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
         "collateral": _build_segments(["סוג ביטחונות", "ביטחונות", "תיאור ביטחונות"]),
         "liquidity":  _build_segments(["סחירות", "דרגת סחירות", "תיאור סחירות"]),
     }
-    
-       
 
 def fmt_km(n: float, decimals: int = 2) -> str:
     try:
@@ -756,7 +737,6 @@ def render_bad_debts_page(account_name_display: str,
     cell_f    = load_font(20)
     small_f   = load_font(22)
     
-
     # כותרות
     t1 = "תיאור חובות בעייתיים בתיק אשראי לא מוחרג"
     _draw_centered(draw, t1,           W//2, 60,  title_f, (20,20,20))
@@ -968,8 +948,6 @@ def render_bad_debts_page_alt(
     selector_labels = ["סכום קבוצת לווים", "תאור נייר", "תאור קבוצת לווים"]  # מימין→שמאל
     _draw_segmented_selector(draw, W//2, 390, 480, 44, selector_labels, cell_f, active=1)
 
-
-
     donuts = _donut_config_for_bucket(bucket_label, df_curr)
     # מרכזים ורדיוסים
     cy = 720
@@ -1004,9 +982,7 @@ def render_bad_debts_page_alt(
         donut_title_f, donut_label_f,
         palette=pale_blue
     )
-    
     return img
-
 
 def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns, gap=24):
     t = fix_hebrew(title)
@@ -1078,7 +1054,6 @@ def render_bad_distributions_page(
     header_f = load_font(22)
     cell_f   = load_font(20)
     
-
     # כותרות עליונות
     _draw_centered(draw, "ניתוח חשיפות מהותיות בתיק אשראי – השוואה תקופתית", W // 2, 70,  title_f, (20, 20, 20))
     _draw_centered(draw, bucket_label,                                      W // 2, 120, sub_f,   (20, 20, 20))
