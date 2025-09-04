@@ -22,6 +22,67 @@ EXCLUDED_SUB_AFIK = {210,211,220,230,240,241,310,311,312,315,326,354,360,405,407
                      346,359,387,391,392,395,398,399,412}
 DEFAULT_IDS = [16396, 16397, 16398]
 
+# לוגו + פס יצירת קשר בתחתית
+# LOGO_PATH   = os.path.join("branding", "logo.png")
+# FOOTER_PATH = os.path.join("branding", "about.png")
+
+# def _safe_open_rgba(path):
+#     try:
+#         if path and os.path.exists(path):
+#             return Image.open(path).convert("RGBA")
+#     except Exception:
+#         pass
+#     return None
+
+# def add_branding(
+#     img: Image.Image,
+#     logo_rel_h=0.08,      # היה 0.12 – מכווצים את הלוגו ~8% מגובה הדף
+#     footer_rel_h=0.052,   # במקום גובה קבוע בפיקסלים – ~5.2% מגובה הדף
+#     pad_left=22, pad_top=18, pad_bottom=12,
+#     wipe_footer_bg=True,  # צובע פס רקע בהיר לפני הדבקת הפוטר כדי שלא תהיה חפיפה ויזואלית
+# ):
+#     W, H = img.size
+#     draw = ImageDraw.Draw(img)
+
+#     # --- לוגו ---
+#     logo = _safe_open_rgba(LOGO_PATH)
+#     if logo:
+#         # גובה יעד יחסי ושמירת יחס תמונה
+#         target_h = int(H * logo_rel_h)
+#         ratio = target_h / logo.height
+#         lw = int(logo.width * ratio)
+#         # מגבלת רוחב יחסית לדף (כדי לא לחרוג לצדדים)
+#         max_lw = int(W * 0.23)
+#         if lw > max_lw:
+#             ratio = max_lw / logo.width
+#             target_h = int(logo.height * ratio)
+#             lw = max_lw
+#         logo = logo.resize((lw, target_h), Image.LANCZOS)
+#         img.paste(logo, (pad_left, pad_top), logo)
+
+#     # --- פוטר/פס יצירת קשר ---
+#     footer = _safe_open_rgba(FOOTER_PATH)
+#     if footer:
+#         # גובה יעד יחסי + שמירת יחס + מגבלת רוחב
+#         target_h = int(H * footer_rel_h)
+#         ratio = target_h / footer.height
+#         fw = int(footer.width * ratio)
+#         max_fw = int(W * 0.72)  # שלא ייקח יותר מדי רוחב
+#         if fw > max_fw:
+#             ratio = max_fw / footer.width
+#             target_h = int(footer.height * ratio)
+#             fw = max_fw
+#         footer = footer.resize((fw, target_h), Image.LANCZOS)
+
+#         x = (W - footer.width) // 2
+#         y = H - footer.height - pad_bottom
+
+#         # מפנים פס רקע בהיר לפני שמדביקים את הפוטר – כדי שלא ייראו טקסטים/גרפים מתחתיו
+#         if wipe_footer_bg:
+#             band_pad = 8
+#             draw.rectangle([0, max(0, y - band_pad), W, H], fill=(245, 245, 245))
+
+#         img.paste(footer, (x, y), footer)
 
 # לוגו + פס יצירת קשר בתחתית
 LOGO_PATH   = os.path.join("branding", "logo.png")
@@ -37,10 +98,10 @@ def _safe_open_rgba(path):
 
 def add_branding(
     img: Image.Image,
-    logo_rel_h=0.08,      # היה 0.12 – מכווצים את הלוגו ~8% מגובה הדף
-    footer_rel_h=0.052,   # במקום גובה קבוע בפיקסלים – ~5.2% מגובה הדף
-    pad_left=22, pad_top=18, pad_bottom=12,
-    wipe_footer_bg=True,  # צובע פס רקע בהיר לפני הדבקת הפוטר כדי שלא תהיה חפיפה ויזואלית
+    logo_rel_h=0.08,      # גובה לוגו יחסי (קטן יותר כדי לא להפריע)
+    footer_rel_h=0.045,   # גובה פוטר יחסי
+    pad_left=22, pad_top=18, pad_bottom=22,
+    wipe_footer_bg=False  # אם TRUE צובע רצועה בהירה לפני הדבקת הפוטר
 ):
     W, H = img.size
     draw = ImageDraw.Draw(img)
@@ -48,42 +109,41 @@ def add_branding(
     # --- לוגו ---
     logo = _safe_open_rgba(LOGO_PATH)
     if logo:
-        # גובה יעד יחסי ושמירת יחס תמונה
         target_h = int(H * logo_rel_h)
-        ratio = target_h / logo.height
-        lw = int(logo.width * ratio)
-        # מגבלת רוחב יחסית לדף (כדי לא לחרוג לצדדים)
-        max_lw = int(W * 0.23)
+        ratio    = target_h / logo.height
+        lw       = int(logo.width * ratio)
+        # לא לעבור ~23% מרוחב הדף
+        max_lw   = int(W * 0.23)
         if lw > max_lw:
-            ratio = max_lw / logo.width
+            ratio    = max_lw / logo.width
             target_h = int(logo.height * ratio)
-            lw = max_lw
+            lw       = max_lw
         logo = logo.resize((lw, target_h), Image.LANCZOS)
         img.paste(logo, (pad_left, pad_top), logo)
 
     # --- פוטר/פס יצירת קשר ---
     footer = _safe_open_rgba(FOOTER_PATH)
     if footer:
-        # גובה יעד יחסי + שמירת יחס + מגבלת רוחב
         target_h = int(H * footer_rel_h)
-        ratio = target_h / footer.height
-        fw = int(footer.width * ratio)
-        max_fw = int(W * 0.72)  # שלא ייקח יותר מדי רוחב
+        ratio    = target_h / footer.height
+        fw       = int(footer.width * ratio)
+        # לא לעבור ~72% מרוחב הדף
+        max_fw   = int(W * 0.72)
         if fw > max_fw:
-            ratio = max_fw / footer.width
+            ratio    = max_fw / footer.width
             target_h = int(footer.height * ratio)
-            fw = max_fw
+            fw       = max_fw
         footer = footer.resize((fw, target_h), Image.LANCZOS)
 
         x = (W - footer.width) // 2
         y = H - footer.height - pad_bottom
 
-        # מפנים פס רקע בהיר לפני שמדביקים את הפוטר – כדי שלא ייראו טקסטים/גרפים מתחתיו
         if wipe_footer_bg:
             band_pad = 8
             draw.rectangle([0, max(0, y - band_pad), W, H], fill=(245, 245, 245))
 
         img.paste(footer, (x, y), footer)
+
 
 # =========================
 # Helpers
@@ -668,22 +728,35 @@ def render_white_slide(account_name_display: str,
     draw_centered_text("רבעון נוכחי", right_x, 240, box_t_f, (50,50,50))
     def draw_box(x1,y1,x2,y2):
         draw.rectangle((x1,y1,x2,y2), outline=(180,180,180), width=2)
-    def draw_percent(cx, top_y, title, value):
-        bw, bh = 320, 150
+
+    def draw_percent(cx, top_y, title, value, bw=260, bh=140):
         l = cx - bw//2
-        draw_box(l, top_y, l+bw, top_y+bh)
+        draw.rectangle((l, top_y, l+bw, top_y+bh), outline=(180,180,180), width=2)
         draw_centered_text(title, cx, top_y+35, box_t_f, (70,70,70))
         if value is None:
-            txt = "--%"
-            fill = (200,200,200)
+            txt, fill = "--%", (200,200,200)
         else:
-            txt = f"{value*100:.2f}%"
-            fill = (0,0,0)
+            txt, fill = f"{value*100:.2f}%", (0,0,0)
         draw_centered_raw(txt, cx, top_y+95, pct_f, fill)
-    draw_percent(left_x,  280, "אחוז מכלל התיק", prev_total_bad_pct)
-    draw_percent(right_x, 280, "אחוז מכלל התיק", curr_total_bad_pct)
-    draw_percent(left_x,  460, "אחוז מתיק האשראי\nהלא מוּחרג", prev_excluded_bad_pct)
-    draw_percent(right_x, 460, "אחוז מתיק האשראי\nהלא מוּחרג", curr_excluded_bad_pct)
+
+    # שני כרטיסים זה לצד זה בכל צד
+    gapx   = 50         # מרווח בין הכרטיסים
+    bw     = 260        # תואם לברירת המחדל בפונקציה
+    top_y  = 300
+
+# שמאל (רבעון קודם)
+    left_c1 = left_x - (bw//2 + gapx//2)   # "אחוז מכלל התיק"
+    left_c2 = left_x + (bw//2 + gapx//2)   # "אחוז מתיק האשראי הלא מוּחרג"
+    draw_percent(left_c1, top_y, "אחוז מכלל התיק",               prev_total_bad_pct, bw=bw)
+    draw_percent(left_c2, top_y, "אחוז מתיק האשראי\nהלא מוּחרג", prev_excluded_bad_pct, bw=bw)
+
+# ימין (רבעון נוכחי)
+    right_c1 = right_x - (bw//2 + gapx//2)
+    right_c2 = right_x + (bw//2 + gapx//2)
+    draw_percent(right_c1, top_y, "אחוז מכלל התיק",               curr_total_bad_pct, bw=bw)
+    draw_percent(right_c2, top_y, "אחוז מתיק האשראי\nהלא מוּחרג", curr_excluded_bad_pct, bw=bw)
+
+    
     def draw_stats(cx, top_y, total_bad_count: int | None, bad_entries_count: int | None = None, bad_exits_count: int | None = None, class_changes_count: int | None = None, late_or_delivered_count: int | None = None):
         bw, bh = 560, 230
         l = cx - bw//2
@@ -1006,11 +1079,7 @@ def render_bad_debts_page_alt(
     # הערה
     note = "נכון לתאריך הדוח, אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי קבוצת הלווים הנ\"ל"
     _draw_centered(draw, note, W//2, 360, cell_f, (30,30,30))
-
-    # שורת בחירה דקורטיבית (כמו שהיה)
-    # headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]
-    # rows_line    = [("","","")]
-    # _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
+    
     selector_labels = ["סכום קבוצת לווים", "תאור נייר", "תאור קבוצת לווים"]  # מימין→שמאל
     _draw_segmented_selector(draw, W//2, 390, 480, 44, selector_labels, cell_f, active=1)
 
@@ -1277,20 +1346,7 @@ def main():
                 )
             )
             
-            # tables_imgs.append(
-            #     render_data_tables(
-            #         account_name_display=account_name,
-            #         bucket_label=bucket_label,
-            #         curr_df=case_curr,
-            #         prev_df=case_prev,
-            #         date_curr=date_cur_str,
-            #         date_prev=date_prev_str,
-            #     )
-            # )
-
         # שמירה
-        # לפני save_all:
-
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
         add_branding(exec_img)
