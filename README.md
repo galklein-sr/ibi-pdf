@@ -45,9 +45,7 @@ case_bucket = {
     16397: ["ארם 50-60"],
     16398: ["ארם 60 ומעלה"],
 }
-```
 
----
 
 ## How rendering works (high‑level)
 
@@ -56,7 +54,6 @@ case_bucket = {
 - **Donut charts:** `_draw_donut` renders a ring chart with a numeric label (e.g., “100%”). Data for the donuts is computed in `_donut_config_for_bucket(bucket_label, df_curr)` and then drawn three times with different titles.
 - **Branding:** `add_branding(img, ...)` places `branding/logo.png` in the top‑left and `branding/about.png` (footer) at the bottom. Both are scaled proportionally with `logo_rel_h` / `footer_rel_h` and respect a global **SAFE_BOTTOM** margin so content never collides with the footer.
 
----
 
 ## Installing & running
 
@@ -83,7 +80,6 @@ Outputs go to `outputs/`:
 - `output_<case_id>.pdf` — multi‑page PDF per case
 - `combined_reports.pdf` — merged PDF of all cases
 
----
 
 ## Where to put branding
 
@@ -106,9 +102,7 @@ add_branding(exec_img, show_logo=False, show_footer=True,
 for _img in dist_pages + tables_imgs + bad_pages:
     add_branding(_img, show_logo=True, show_footer=True,
                  logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
-```
 
----
 
 ## Layout & spacing
 
@@ -117,7 +111,7 @@ for _img in dist_pages + tables_imgs + bad_pages:
 - **Tables spacing:** Between tables we use 18–24 px; between the last table and the footer we ensure ≥ **4 cm ≈ 151 px**.
 - **Side‑by‑side blocks:** In “Reclassification of Securities”, the two blocks are horizontally aligned using fixed center anchors `left_x = W//2 - 400`, `right_x = W//2 + 400` and identical box widths.
 
----
+
 
 ## Data mapping tips
 
