@@ -1138,7 +1138,8 @@ def render_bad_debts_page_alt(
     headers_left  = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור ענף"]
     headers_mid   = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור קבוצת לווים"]
     headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרוג קבוע לנייר"]
-    fracs = [0.28, 0.22, 0.50]
+    # fracs = [0.28, 0.22, 0.50]
+    fracs = [0.31, 0.21, 0.48] # הסכום הוא 1.0 ובכך פתרתי את חריגת טקסט מהמקום שלו
 
     _draw_table_full(draw, x_left,  y0, w_small, headers_left,  rows_left,  header_f, cell_f, fracs)
     _draw_table_full(draw, x_mid,   y0, w_small, headers_mid,   rows_mid,   header_f, cell_f, fracs)
