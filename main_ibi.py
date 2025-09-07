@@ -37,6 +37,8 @@ def _safe_open_rgba(path):
 
 def add_branding(
     img: Image.Image,
+    show_logo=False,        
+    show_footer=True,
     logo_rel_h=0.08,      # גובה לוגו יחסי (קטן יותר כדי לא להפריע)
     footer_rel_h=0.045,   # גובה פוטר יחסי
     pad_left=22, pad_top=18, pad_bottom=22,
@@ -44,45 +46,40 @@ def add_branding(
 ):
     W, H = img.size
     draw = ImageDraw.Draw(img)
-
-    # --- לוגו ---
     
-    logo = _safe_open_rgba(LOGO_PATH)
-    if logo:
-        target_h = int(H * logo_rel_h)
-        ratio    = target_h / logo.height
-        lw       = int(logo.width * ratio)
-        # לא לעבור ~23% מרוחב הדף
-        max_lw   = int(W * 0.23)
-        if lw > max_lw:
-            ratio    = max_lw / logo.width
-            target_h = int(logo.height * ratio)
-            lw       = max_lw
-        logo = logo.resize((lw, target_h), Image.LANCZOS)
-        img.paste(logo, (pad_left, pad_top), logo)
-        
-        
-    footer = _safe_open_rgba(FOOTER_PATH)
-    if footer:
-        target_h = int(H * footer_rel_h)
-        ratio    = target_h / footer.height
-        fw       = int(footer.width * ratio)
-        # לא לעבור ~72% מרוחב הדף
-        max_fw   = int(W * 0.72)
-        if fw > max_fw:
-            ratio    = max_fw / footer.width
-            target_h = int(footer.height * ratio)
-            fw       = max_fw
-        footer = footer.resize((fw, target_h), Image.LANCZOS)
+    if show_logo:                                   
+        logo = _safe_open_rgba(LOGO_PATH)
+        if logo:
+            target_h = int(H * logo_rel_h)
+            ratio    = target_h / logo.height
+            lw       = int(logo.width * ratio)
+            max_lw   = int(W * 0.23)
+            if lw > max_lw:
+                ratio    = max_lw / logo.width
+                target_h = int(logo.height * ratio)
+                lw       = max_lw
+            logo = logo.resize((lw, target_h), Image.LANCZOS)
+            img.paste(logo, (pad_left, pad_top), logo)
 
-        x = (W - footer.width) // 2
-        y = H - footer.height - pad_bottom
-
-        if wipe_footer_bg:
-            band_pad = 8
-            draw.rectangle([0, max(0, y - band_pad), W, H], fill=(245, 245, 245))
-
-        img.paste(footer, (x, y), footer)
+    # --- פוטר ---
+    if show_footer:                                   
+        footer = _safe_open_rgba(FOOTER_PATH)
+        if footer:
+            target_h = int(H * footer_rel_h)
+            ratio    = target_h / footer.height
+            fw       = int(footer.width * ratio)
+            max_fw   = int(W * 0.72)
+            if fw > max_fw:
+                ratio    = max_fw / footer.width
+                target_h = int(footer.height * ratio)
+                fw       = max_fw
+            footer = footer.resize((fw, target_h), Image.LANCZOS)
+            x = (W - footer.width) // 2
+            y = H - footer.height - pad_bottom
+            if wipe_footer_bg:
+                band_pad = 8
+                draw.rectangle([0, max(0, y - band_pad), W, H], fill=(245, 245, 245))
+            img.paste(footer, (x, y), footer)
 
 # =========================
 # Helpers
@@ -215,7 +212,6 @@ def _is_numeric_text(s: str) -> bool:
         return False
 ####### ABOVE : END OF RECENT EDITS OF HEBREW WORDS #######
 
-
 def _draw_text_fit(draw, text, x, y, w, h,
                    base_size=20, min_size=12,
                    color=(255,255,255), align="center"):
@@ -315,8 +311,6 @@ def _draw_segmented_selector(
         seg_right = right - int(active * seg_w)
         seg_left  = right - int((active + 1) * seg_w)
         draw.line([(seg_left + 8, bottom - 2), (seg_right - 8, bottom - 2)], fill=underline, width=3)
-
-    
     ####### end of the new code #######
 
 def _fmt_num(n, digits=2):
@@ -362,19 +356,7 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         draw.rectangle([x, cy, x+w, cy+row_h], fill=bg)
         col_x = x
         
-        ####### THIS CODE SHOULD DELETED AND REPLACED BY THE CODE BELOW #######
-        # for i, cell in enumerate(row):
-        #     cw = col_ws[i]
-        #     txt = fix_hebrew("" if cell is None else str(cell))
-        #     txt = ellipsize(draw, txt, cell_font, max_w=cw - 2*pad)
-        #     is_num_col = i not in (len(row)-1,)
-        #     tb = draw.textbbox((0,0), txt, font=cell_font)
-        #     if is_num_col:
-        #         tx = col_x + cw - pad - (tb[2]-tb[0])
-        #     else:
-        #         tx = col_x + pad
         
-        ####### the code is here :
         for i, cell in enumerate(row):
             cw = col_ws[i]
             raw = "" if cell is None else str(cell)
@@ -399,10 +381,7 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
             draw.text((tx, ty), txt, font=cell_font, fill=(20,20,20))
             draw.line([(col_x, cy), (col_x, cy+row_h)], fill=grid, width=1)
             col_x += cw
-            
-            #### end of the code ####
-            
-            
+                      
         draw.line([(x+w, cy), (x+w, cy+row_h)], fill=grid, width=1)
         draw.line([(x, cy+row_h), (x+w, cy+row_h)], fill=grid, width=1)
         cy += row_h
@@ -544,10 +523,7 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
     - חוב בעייתי בלבד: debt_forum_type ∈ BAD_TYPES
     - ערך לחיבור: 'שווי נייר' (sec_value)
     - TOP-3 + 'אחר'
-    מיפוי:
-      geo         ← קבוצת לווים
-      collateral  ← ענף
-      liquidity   ← דירוג (קבוע; ואם אין – מעלות/מידרג; ואם עדיין אין – 'ללא דירוג')
+    מיפוי:  geo ← קבוצת לווים, collateral  ← ענף, liquidity ← דירוג
     """
     # 1) ARM bucket
     df = _filter_aram_bucket(df_curr.copy(), bucket_label)
@@ -612,8 +588,6 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
         "collateral": segments_collateral,
         "liquidity":  segments_liquidity,
     }
-
-
 
 # =========================
 # Metric calculators
@@ -936,8 +910,6 @@ def _top3_for_group(df_case_full: pd.DataFrame, group_col: str) -> list[tuple[st
 
     return out if out else [("","", "")]
 
-
-
 def render_bad_debts_page(account_name_display: str,
                           bucket_label: str,
                           df_curr: pd.DataFrame,
@@ -946,8 +918,7 @@ def render_bad_debts_page(account_name_display: str,
     תיאור חובות בעייתיים בתיק אשראי לא מוחרג:
     - מסנן לבקט ARM
     - מסנן ל*מוחרגים* (EXCLUDED_SUB_AFIK)
-    - מסנן ל-BAD
-    - "אחוז מאשראי לא מוחרג" = value_row / sum(value בכל המוחרגים בתיק)
+    - מסנן ל-BAD - "אחוז מאשראי לא מוחרג" = value_row / sum(value בכל המוחרגים בתיק)
     """
     W, H = 1600, 900
     img  = Image.new("RGB", (W, H), (245,245,245))
@@ -1076,7 +1047,6 @@ def render_bad_debts_page_alt(
     donut_title_f = load_font(28)
     donut_label_f = load_font(18)
 
-
     # כותרות
     _draw_centered(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג", W//2, 60,  title_f, (20,20,20))
     _draw_centered(draw, bucket_label,                                       W//2, 120, sub_f,   (20,20,20))
@@ -1169,20 +1139,13 @@ def render_bad_debts_page_alt(
     safe_y = H - SAFE_BOTTOM
     _draw_centered(draw, note, W//2, min(360, safe_y - 80), cell_f, (30,30,30))
 
-
     donuts = _donut_config_for_bucket(bucket_label, df_curr)
-
-    # שורת בחירה דקורטיבית (כמו שהיה)
-    # headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]
-    # rows_line    = [("","","")]
-    # _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
-    
     selector_labels = ["סכום קבוצת לווים", "תאור נייר", "תאור קבוצת לווים"]  # מימין→שמאל
     _draw_segmented_selector(draw, W//2, 390, 480, 44, selector_labels, cell_f, active=1)
 
     # מרכזים ורדיוסים
     # cy = 720
-    ro, ri = 110, 64            # אפשר להשאיר כפי שיש אצלך אם זה ערך מעט שונה
+    ro, ri = 110, 64            
     leader_gap = 36             # מרווח קו/תווית מתחת לעיגול
     cy = H - SAFE_BOTTOM - (ro + leader_gap)
     cx_left   = int(W * 0.17)   # שמאלי: סחירות
@@ -1385,7 +1348,6 @@ def render_bad_distributions_page(
     _draw_section(draw, left_x,  yL2, w_tbl, "ענפים",       sub_f, header_sector,   left_sectors,   header_f, cell_f, aligns)
     _draw_section(draw, left_x,  yL3, w_tbl, "קבוצת לווים", sub_f, header_group,    left_groups,    header_f, cell_f, aligns)
 
-
 # ----------------------
 # פריסת 3 הסקשנים בצד ימין (קודם)
 # ----------------------
@@ -1415,9 +1377,7 @@ def render_bad_distributions_page(
     _draw_section(draw, right_x, yR2, w_tbl, "ענפים",       sub_f, header_sector,   right_sectors,   header_f, cell_f, aligns)
     _draw_section(draw, right_x, yR3, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns)
 
-
     return img
-
 
 # =========================
 # Main (unchanged except calling the new slides)
@@ -1497,7 +1457,7 @@ def main():
                     account_name_display=account_name,
                     bucket_label=bucket_label,
                     df_curr=case_curr,
-                    df_prev=case_prev,          # חדש
+                    df_prev=case_prev,          
                     date_curr=date_cur_str,     # תאריך נוכחי
                     date_prev=date_prev_str,    # תאריך קודם
                 )
@@ -1522,13 +1482,16 @@ def main():
                     date_str=date_cur_str,
                 )
             )
-
-        # שמירה
-        add_branding(exec_img, logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
-        add_branding(white_img, logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
-        for _img in dist_pages + tables_imgs + bad_pages:
-            add_branding(_img,   logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
             
+        for _img in [white_img, *dist_pages, *tables_imgs, *bad_pages]:
+            add_branding(
+                _img,
+                show_logo=True,
+                show_footer=True,
+                logo_rel_h=0.07, footer_rel_h=0.038,
+                pad_bottom=26, wipe_footer_bg=True
+            )
+        # שמירה
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
         exec_img.save(out_png)
