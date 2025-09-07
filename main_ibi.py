@@ -22,7 +22,6 @@ EXCLUDED_SUB_AFIK = {210,211,220,230,240,241,310,311,312,315,326,354,360,405,407
                      346,359,387,391,392,395,398,399,412}
 DEFAULT_IDS = [16396, 16397, 16398]
 
-
 # לוגו + פס יצירת קשר בתחתית
 LOGO_PATH   = os.path.join("branding", "logo.png")
 FOOTER_PATH = os.path.join("branding", "about.png")
@@ -117,6 +116,31 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
         except Exception:
             continue
     return ImageFont.load_default()
+
+def _shrink_font_to_fit(draw, text, base_font, max_width, min_size=12):
+    """
+    מקטין את גודל הפונט עד שהטקסט נכנס ל-max_width.
+    לא מבצע קיצור עם … בכלל.
+    מחזיר (font_fitted, text_original_as_RTL).
+    """
+    t = fix_hebrew("" if text is None else str(text))
+    size = getattr(base_font, "size", 24)
+    fitted = load_font(size)
+    # הקטנה עד שממש נכנס
+    while size > min_size and draw.textbbox((0, 0), t, font=fitted)[2] > max_width:
+        size -= 1
+        fitted = load_font(size)
+    return fitted, t
+
+def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_size=14, color=(20,20,20)):
+    """
+    מצייר טקסט ממורכז סביב y_center, ומקטין פונט עד שהטקסט נכנס לרוחב הנתון.
+    """
+    base_font = load_font(base_size)
+    f, t = _shrink_font_to_fit(draw, text, base_font, max_width, min_size=min_size)
+    tb = draw.textbbox((0, 0), t, font=f)
+    draw.text((cx - (tb[2]-tb[0])//2, y_center - (tb[3]-tb[1])//2), t, font=f, fill=color)
+
 
 def fmt_pct(v: float | None) -> str:
     if v is None:
@@ -333,15 +357,14 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
     col_ws = [int(w*f) for f in col_fracs]
     col_ws[-1] = w - sum(col_ws[:-1])
     col_x = x
+
     for i, h in enumerate(headers):
         cw = col_ws[i]
-        draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
-        txt = fix_hebrew(h)
-        # tb = draw.textbbox((0,0), txt, font=header_font)
-        # draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
-        #           txt, font=header_font, fill=htext)
-        hdr_rect = (col_x + 6, y + 6, col_x + cw - 6, y + head_h - 6)   # שוליים קטנים
-        fit_font, fit_text = _fit_or_ellipsis(draw, fix_hebrew(h), header_font, cw - 12)
+        draw.rectangle([col_x, y, col_x + cw, y + head_h], fill=hfill)
+        # מכווצים פונט עד שהכותרת נכנסת לרוחב התא (ללא ...):
+        fit_font, fit_text = _shrink_font_to_fit(draw, h, header_font, cw - 12, min_size=14)
+        # מציירים ממורכז בתוך התא – שים לב: fit_text כבר RTL, אין לקרוא שוב fix_hebrew
+        hdr_rect = (col_x + 6, y + 6, col_x + cw - 6, y + head_h - 6)
         _text_center_in_rect(draw, fit_text, fit_font, hdr_rect, fill=htext)
         col_x += cw
     col_x = x
@@ -453,18 +476,6 @@ def load_quarter(path: str) -> pd.DataFrame | None:
         return None
     return df
 
-def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_size=14, color=(20,20,20)):
-    """מצייר טקסט ממורכז סביב y_center, ומקטין פונט עד שהטקסט נכנס לרוחב max_width."""
-    t = fix_hebrew(text)
-    size = int(base_size)
-    f = load_font(size)
-    # מקטינים עד שנכנס לרוחב
-    while size > min_size and draw.textbbox((0, 0), t, font=f)[2] > max_width:
-        size -= 1
-        f = load_font(size)
-    tw, th = _text_size(draw, t, f)
-    draw.text((cx - tw // 2, y_center - th // 2), t, font=f, fill=color)
-
 # --- Donut (דונאט) ---
 def _draw_donut(
     draw, cx, cy, outer_r, inner_r,
@@ -481,16 +492,10 @@ def _draw_donut(
 
     if palette is None:
         palette = [(14, 134, 255), (120, 170, 255), (180, 205, 255), (80, 140, 230)]
-
-    # כותרת מעל הדונאט
-    # _draw_centered(draw, title, cx, cy - outer_r - 45, title_font, (20, 20, 20))
-    # כותרת מעל הדונאט – התאמה אוטומטית לרוחב הדונאט
     title_y = cy - outer_r - 36
     max_w   = int(outer_r * 2)          # קוטר הדונאט
     base_sz = getattr(title_font, "size", 28)
     _draw_centered_fit(draw, title, cx, title_y, max_w, base_size=base_sz, min_size=16, color=(20,20,20))
-
-
     total = sum(float(v) for _, v in segments) or 1.0
     bbox = [cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r]
 
@@ -820,8 +825,7 @@ def render_white_slide(account_name_display: str,
         for line in lines:
             draw.text((l+pad, y), fix_hebrew(line), font=small_f, fill=(30,30,30))
             y += 40
-    # draw_stats(left_x,  640, prev_bad_count, prev_bad_entries, prev_bad_exits, prev_class_changes, prev_late_or_delivered)
-    # draw_stats(right_x, 640, curr_bad_count, curr_bad_entries, curr_bad_exits, curr_class_changes, curr_late_or_delivered)
+
     bh = 140          # הגובה של כרטיס draw_percent (כמו בברירת המחדל של הפונקציה)
     stats_h = 230     # הגובה של תיבת הסטטיסטיקות בתוך draw_stats
     gap_stats = 32    # המרווח בין שורת הכרטיסים לבין תיבות הסטטיסטיקות (קטן יותר = יותר צמוד)
@@ -835,9 +839,7 @@ def render_white_slide(account_name_display: str,
             prev_class_changes, prev_late_or_delivered)
     draw_stats(right_x, stats_top_y, curr_bad_count, curr_bad_entries, curr_bad_exits,
             curr_class_changes, curr_late_or_delivered)
-    
     return slide
-
 # =========================
 # NEW: accurate computations for the 3 new slides
 # =========================
@@ -1024,7 +1026,6 @@ def render_bad_debts_page(account_name_display: str,
     
     draw.text((cx, yb), bt, font=small_f, fill=(20,20,20))
     draw.text((cx + (tb1[2]-tb1[0]) + gap, yb), val, font=small_f, fill=(20,20,20))
-
     return img
 
 def render_bad_debts_page_alt(
@@ -1048,8 +1049,18 @@ def render_bad_debts_page_alt(
     donut_label_f = load_font(18)
 
     # כותרות
-    _draw_centered(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג", W//2, 60,  title_f, (20,20,20))
-    _draw_centered(draw, bucket_label,                                       W//2, 120, sub_f,   (20,20,20))
+    # _draw_centered(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג", W//2, 60,  title_f, (20,20,20))
+    # _draw_centered(draw, bucket_label, W//2, 120, sub_f,   (20,20,20))
+    _draw_centered_fit(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג",
+                    cx=W//2, y_center=60,
+                    max_width=int(W*0.9),
+                    base_size=getattr(title_f, "size", 56), min_size=26, color=(20,20,20))
+
+    _draw_centered_fit(draw, bucket_label,
+                    cx=W//2, y_center=120,
+                    max_width=int(W*0.8),
+                    base_size=getattr(sub_f, "size", 40), min_size=22, color=(20,20,20))
+
 
     df = df_curr.copy()
     df = _filter_aram_bucket(df, bucket_label)
@@ -1181,7 +1192,6 @@ def render_bad_debts_page_alt(
     )
     return img
 
-
 def _estimate_section_height(draw, title_font, header_font, cell_font, rows):
     title_h  = _text_size(draw, "כותרת", title_font)[1] + 16
     header_h = 38
@@ -1189,13 +1199,21 @@ def _estimate_section_height(draw, title_font, header_font, cell_font, rows):
     n_rows   = max(3, len(rows))
     gap_after = 40
     
-    return title_h + header_h + used_rows * row_h + gap_after
+    return title_h + header_h + n_rows * row_h + gap_after
 
 def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
-    t = fix_hebrew(title)
-    tw, th = _text_size(draw, t, sub_font)
-    _draw_centered(draw, title, x + w_tbl // 2, top_y + th // 2, sub_font, (0, 0, 0))
-    table_top = top_y + th + 16
+    # t = fix_hebrew(title)
+    # tw, th = _text_size(draw, t, sub_font)
+    # _draw_centered(draw, title, x + w_tbl // 2, top_y + th // 2, sub_font, (0, 0, 0))
+    # table_top = top_y + th + 16
+    title_h_guess = _text_size(draw, "כותרת", sub_font)[1]
+    _draw_centered_fit(draw, title,
+                    cx=x + w_tbl // 2,
+                    y_center=top_y + title_h_guess // 2,
+                    max_width=w_tbl - 10,
+                    base_size=getattr(sub_font, "size", 24),
+                    min_size=14, color=(0,0,0))
+    table_top = top_y + title_h_guess + 16
     _draw_table(draw, x, table_top, w_tbl, 38, header, rows, header_f, cell_f, aligns=aligns)
     used_rows = min(3, len(rows))
     next_y = table_top + 38 * (1 + used_rows) + 40
@@ -1208,7 +1226,6 @@ def _estimate_section_height(draw, title_font, header_font, cell_font, rows):
     row_h    = 40
     n_rows   = max(1, len(rows))
     return title_h + header_h + n_rows * row_h + 8
-
 
 def _draw_table(draw, x, y, w, row_h, header, rows, header_f, cell_f, aligns=None):
     if aligns is None:
@@ -1263,7 +1280,6 @@ def render_bad_distributions_page(
     W, H = 1600, 900
     img  = Image.new("RGB", (W, H), (245,245,245))
     draw = ImageDraw.Draw(img)
-
     title_f  = load_font(56)
     sub_f    = load_font(40)
     date_f   = load_font(36)
@@ -1376,7 +1392,6 @@ def render_bad_distributions_page(
     _draw_section(draw, right_x, yR1, w_tbl, "לווה יחיד",   sub_f, header_borrower, right_borrowers, header_f, cell_f, aligns)
     _draw_section(draw, right_x, yR2, w_tbl, "ענפים",       sub_f, header_sector,   right_sectors,   header_f, cell_f, aligns)
     _draw_section(draw, right_x, yR3, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns)
-
     return img
 
 # =========================
