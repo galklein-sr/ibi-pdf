@@ -94,20 +94,6 @@ branding/
   about.png   # footer strip / about block (PNG)
 ```
 
-
-
-Example:
-```python
-# First slide (no logo, footer yes)
-add_branding(exec_img, show_logo=False, show_footer=True,
-             logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
-
-# Other slides (logo + footer)
-for _img in dist_pages + tables_imgs + bad_pages:
-    add_branding(_img, show_logo=True, show_footer=True,
-                 logo_rel_h=0.07, footer_rel_h=0.038, pad_bottom=26, wipe_footer_bg=True)
-```
-
 ---
 
 ## Layout & spacing
