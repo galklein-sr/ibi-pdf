@@ -15,6 +15,20 @@ data_excel_file = 'DataToPDF/data.xlsx'
 data_sheet_name = 'Sheet1'  # You can also use an integer index, e.g., 0
 full_df = pd.read_excel(data_excel_file, sheet_name=data_sheet_name)
 
+def fmt_km(n: float, decimals: int = 2) -> str:
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return str(n)
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    if n >= 1_000_000:
+        return f"{sign}{n/1_000_000:.{decimals}f}M"
+    elif n >= 1_000:
+        return f"{sign}{n/1_000:.{decimals}f}K"
+    else:
+        return f"{sign}{n:.{decimals}f}"
+
 def _norm_case_series(s):
     s = s.astype(str).str.strip().str.replace(r'\.0$', '', regex=True)  
     return pd.to_numeric(s, errors='coerce').astype('Int64')
@@ -35,6 +49,7 @@ for case_id in ids:
         print(f"לא נמצאו נתונים לתיק {case_id}, מדלג.")
         continue
 
+    #calculating the data
     account_name = data_df.iloc[0]['שם חשבון']
     account_name = arabic_reshaper.reshape(account_name)
     account_name = get_display(account_name)
@@ -64,8 +79,12 @@ for case_id in ids:
     data_dt_subafik_filter = data_df[data_df['sub_afik'].isin(discarded_sub_afik)]
     p_o_p_afik_filter_value = data_dt_subafik_filter['p_o_p_b_leval'].sum()
 
+<<<<<<< HEAD
 
     #Image Drawings
+=======
+    # drawing the data
+>>>>>>> c8462f3 (WIP: local changes before pull)
     image = Image.open('templates/template1.png').convert("RGB")
     draw = ImageDraw.Draw(image)
 
@@ -85,7 +104,7 @@ for case_id in ids:
             'color': (255, 255, 255)  
         },
         {
-            'text': f"{p_value/1_000_000:.2f}M",
+            'text': fmt_km(p_value),
             'position': (470, 132),
             'font_path': 'arial.ttf',
             'font_size': 32,
@@ -99,7 +118,7 @@ for case_id in ids:
             'color': (255, 255, 255)  
         },
         {
-            'text': "{:.2f}".format(p_debt_value) ,
+            'text': fmt_km(p_debt_value),
             'position': (470, 440),
             'font_path': 'arial.ttf',
             'font_size': 42,
