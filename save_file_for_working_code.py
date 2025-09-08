@@ -119,7 +119,10 @@ def fmt_pct(v: float | None) -> str:
         return f"{float(v)*100:.2f}%"
     except Exception:
         return "--%"
+<<<<<<< HEAD
     
+=======
+>>>>>>> 6140b2f (testing)
 
 def ellipsize(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     t = fix_hebrew(str(text))
@@ -129,6 +132,7 @@ def ellipsize(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont
         t = t[:-1]
     return t + "…"
 
+<<<<<<< HEAD
 
 def ellipsize_raw(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     """קיצור טקסט לרוחב נתון *בלי* fix_hebrew (משתמשים כשכבר עשינו עיבוד RTL קודם)."""
@@ -155,6 +159,8 @@ def _is_numeric_text(s: str) -> bool:
     except Exception:
         return False
 
+=======
+>>>>>>> 6140b2f (testing)
 def _draw_text_fit(draw, text, x, y, w, h,
                    base_size=20, min_size=12,
                    color=(255,255,255), align="center"):
@@ -203,6 +209,7 @@ def _text_center_in_rect(draw, text, font, rect, fill=(255,255,255)):
     x = l + (w - tw)//2
     y = t + (h - th)//2
     draw.text((x,y), text, font=font, fill=fill)
+<<<<<<< HEAD
     
 def _draw_segmented_selector(draw, cx, y, w, h, labels, font, active=0):
     """
@@ -252,6 +259,8 @@ def _draw_segmented_selector(draw, cx, y, w, h, labels, font, active=0):
 
         # טקסט ממורכז בכל מקטע
         _text_center_in_rect(draw, fix_hebrew(label), font, (lx1, y, lx2, y + h), fill=(20, 20, 20))
+=======
+>>>>>>> 6140b2f (testing)
 
 def _fmt_num(n, digits=2):
     try:
@@ -263,7 +272,11 @@ def _fmt_num(n, digits=2):
 
 def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_fracs):
     row_h = 40
+<<<<<<< HEAD
     head_h = 50
+=======
+    head_h = 42
+>>>>>>> 6140b2f (testing)
     pad    = 10
     hfill  = (12,52,87)
     htext  = (255,255,255)
@@ -273,6 +286,7 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
     col_ws = [int(w*f) for f in col_fracs]
     col_ws[-1] = w - sum(col_ws[:-1])
     col_x = x
+<<<<<<< HEAD
     
     for i, h in enumerate(headers):
         cw = col_ws[i]
@@ -287,6 +301,16 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         )
         col_x += cw
     
+=======
+    for i, h in enumerate(headers):
+        cw = col_ws[i]
+        draw.rectangle([col_x, y, col_x+cw, y+head_h], fill=hfill)
+        txt = fix_hebrew(h)
+        tb = draw.textbbox((0,0), txt, font=header_font)
+        draw.text((col_x + (cw - (tb[2]-tb[0]))//2, y + (head_h - (tb[3]-tb[1]))//2),
+                  txt, font=header_font, fill=htext)
+        col_x += cw
+>>>>>>> 6140b2f (testing)
     col_x = x
     for i in range(len(headers)+1):
         draw.line([(col_x, y), (col_x, y+head_h)], fill=grid, width=1)
@@ -300,6 +324,7 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         col_x = x
         for i, cell in enumerate(row):
             cw = col_ws[i]
+<<<<<<< HEAD
             raw = "" if cell is None else str(cell)
 
 # עברית → RTL פעם אחת בלבד; מספרים/אנגלית נשארים כמו שהם
@@ -320,6 +345,17 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
             else:
                 tx = col_x + pad
             ty = cy + (row_h - (tb[3] - tb[1])) // 2
+=======
+            txt = fix_hebrew("" if cell is None else str(cell))
+            txt = ellipsize(draw, txt, cell_font, max_w=cw - 2*pad)
+            is_num_col = i not in (len(row)-1,)
+            tb = draw.textbbox((0,0), txt, font=cell_font)
+            if is_num_col:
+                tx = col_x + cw - pad - (tb[2]-tb[0])
+            else:
+                tx = col_x + pad
+            ty = cy + (row_h - (tb[3]-tb[1]))//2
+>>>>>>> 6140b2f (testing)
             draw.text((tx, ty), txt, font=cell_font, fill=(20,20,20))
             draw.line([(col_x, cy), (col_x, cy+row_h)], fill=grid, width=1)
             col_x += cw
@@ -351,6 +387,7 @@ def _draw_centered(draw, text, cx, cy, font, fill=(20, 20, 20)):
     x = cx - (bbox[2]-bbox[0]) // 2
     y = cy - (bbox[3]-bbox[1]) // 2
     draw.text((x, y), t, font=font, fill=fill)
+<<<<<<< HEAD
     
 def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_size=14, color=(20,20,20)):
     """מצייר טקסט ממורכז סביב y_center, ומקטין פונט עד שהטקסט נכנס לרוחב max_width."""
@@ -452,6 +489,8 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
         "collateral": _build_segments(["סוג ביטחונות", "ביטחונות", "תיאור ביטחונות"]),
         "liquidity":  _build_segments(["סחירות", "דרגת סחירות", "תיאור סחירות"]),
     }
+=======
+>>>>>>> 6140b2f (testing)
 
 def fmt_km(n: float, decimals: int = 2) -> str:
     try:
@@ -670,8 +709,13 @@ def render_white_slide(account_name_display: str,
     draw_centered_text("רבעון נוכחי", right_x, 240, box_t_f, (50,50,50))
     def draw_box(x1,y1,x2,y2):
         draw.rectangle((x1,y1,x2,y2), outline=(180,180,180), width=2)
+<<<<<<< HEAD
 
     def draw_percent(cx, top_y, title, value, bw=260, bh=140):
+=======
+    def draw_percent(cx, top_y, title, value):
+        bw, bh = 320, 150
+>>>>>>> 6140b2f (testing)
         l = cx - bw//2
         draw.rectangle((l, top_y, l+bw, top_y+bh), outline=(180,180,180), width=2)
         draw_centered_text(title, cx, top_y+35, box_t_f, (70,70,70))
@@ -680,6 +724,7 @@ def render_white_slide(account_name_display: str,
         else:
             txt, fill = f"{value*100:.2f}%", (0,0,0)
         draw_centered_raw(txt, cx, top_y+95, pct_f, fill)
+<<<<<<< HEAD
 
     # שני כרטיסים זה לצד זה בכל צד
     gapx   = 50         # מרווח בין הכרטיסים
@@ -699,6 +744,12 @@ def render_white_slide(account_name_display: str,
     draw_percent(right_c2, top_y, "אחוז מתיק האשראי\nהלא מוּחרג", curr_excluded_bad_pct, bw=bw)
 
     
+=======
+    draw_percent(left_x,  280, "אחוז מכלל התיק", prev_total_bad_pct)
+    draw_percent(right_x, 280, "אחוז מכלל התיק", curr_total_bad_pct)
+    draw_percent(left_x,  460, "אחוז מתיק האשראי\nהלא מוּחרג", prev_excluded_bad_pct)
+    draw_percent(right_x, 460, "אחוז מתיק האשראי\nהלא מוּחרג", curr_excluded_bad_pct)
+>>>>>>> 6140b2f (testing)
     def draw_stats(cx, top_y, total_bad_count: int | None, bad_entries_count: int | None = None, bad_exits_count: int | None = None, class_changes_count: int | None = None, late_or_delivered_count: int | None = None):
         bw, bh = 560, 230
         l = cx - bw//2
@@ -817,7 +868,11 @@ def render_bad_debts_page(account_name_display: str,
     header_f  = load_font(22)
     cell_f    = load_font(20)
     small_f   = load_font(22)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 6140b2f (testing)
     # כותרות
     t1 = "תיאור חובות בעייתיים בתיק אשראי לא מוחרג"
     _draw_centered(draw, t1,           W//2, 60,  title_f, (20,20,20))
@@ -876,9 +931,13 @@ def render_bad_debts_page(account_name_display: str,
             ""
         ))
     else:
+<<<<<<< HEAD
         # rows.append((fix_hebrew("מסופק"), "", "", "", "", "", "", "", ""))
         # rows.append(("Total",  "", "", "", "", "", "", "", ""))
         rows.append(("מסופק", "", "", "", "", "", "", "", ""))
+=======
+        rows.append((fix_hebrew("מסופק"), "", "", "", "", "", "", "", ""))
+>>>>>>> 6140b2f (testing)
         rows.append(("Total",  "", "", "", "", "", "", "", ""))
 
     # טבלה
@@ -905,8 +964,12 @@ def render_bad_debts_page(account_name_display: str,
     tb2 = draw.textbbox((0,0), val, font=small_f)
     gap = 35
     cx = W//2 - ( (tb1[2]-tb1[0]) + gap + (tb2[2]-tb2[0]) )//2
+<<<<<<< HEAD
     #yb = H - 90
     yb = H - SAFE_BOTTOM - 10
+=======
+    yb = H - 90
+>>>>>>> 6140b2f (testing)
     draw.text((cx, yb), bt, font=small_f, fill=(20,20,20))
     draw.text((cx + (tb1[2]-tb1[0]) + gap, yb), val, font=small_f, fill=(20,20,20))
 
@@ -929,8 +992,11 @@ def render_bad_debts_page_alt(
     sub_f    = load_font(40)
     header_f = load_font(22)
     cell_f   = load_font(20)
+<<<<<<< HEAD
     donut_title_f = load_font(28)
     donut_label_f = load_font(18)
+=======
+>>>>>>> 6140b2f (testing)
 
     # כותרות
     _draw_centered(draw, "תיאור חובות בעייתיים בתיק אשראי לא מוחרג", W//2, 60,  title_f, (20,20,20))
@@ -1012,7 +1078,11 @@ def render_bad_debts_page_alt(
 
     headers_left  = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור ענף"]
     headers_mid   = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור קבוצת לווים"]
+<<<<<<< HEAD
     headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרוג קבוע לנייר"]
+=======
+    headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרג קבוע לנייר"]
+>>>>>>> 6140b2f (testing)
     fracs = [0.28, 0.22, 0.50]
 
     _draw_table_full(draw, x_left,  y0, w_small, headers_left,  rows_left,  header_f, cell_f, fracs)
@@ -1022,6 +1092,7 @@ def render_bad_debts_page_alt(
     # הערה
     note = "נכון לתאריך הדוח, אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי קבוצת הלווים הנ\"ל"
     _draw_centered(draw, note, W//2, 360, cell_f, (30,30,30))
+<<<<<<< HEAD
     
     selector_labels = ["סכום קבוצת לווים", "תאור נייר", "תאור קבוצת לווים"]  # מימין→שמאל
     _draw_segmented_selector(draw, W//2, 390, 480, 44, selector_labels, cell_f, active=1)
@@ -1067,13 +1138,30 @@ def render_bad_debts_page_alt(
     return img
 
 def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns, gap=24):
+=======
+
+    # שורת בחירה דקורטיבית (כמו שהיה)
+    headers_line = ["סכום קבוצת לווים","תאור נייר","תאור קבוצת לווים"]
+    rows_line    = [("","","")]
+    _draw_table_full(draw, W//2 - 480//2, 390, 480, headers_line, rows_line, header_f, cell_f, [0.34,0.33,0.33])
+
+    return img
+
+
+
+def _draw_section(draw, x, top_y, w_tbl, title, sub_font, header, rows, header_f, cell_f, aligns):
+>>>>>>> 6140b2f (testing)
     t = fix_hebrew(title)
     tw, th = _text_size(draw, t, sub_font)
     _draw_centered(draw, title, x + w_tbl // 2, top_y + th // 2, sub_font, (0, 0, 0))
     table_top = top_y + th + 16
     _draw_table(draw, x, table_top, w_tbl, 38, header, rows, header_f, cell_f, aligns=aligns)
     used_rows = min(3, len(rows))
+<<<<<<< HEAD
     next_y = table_top + 38 * (1 + used_rows) + gap  #+ 35
+=======
+    next_y = table_top + 38 * (1 + used_rows) + 40
+>>>>>>> 6140b2f (testing)
     return next_y
 
 def _draw_table(draw, x, y, w, row_h, header, rows, header_f, cell_f, aligns=None):
@@ -1135,7 +1223,11 @@ def render_bad_distributions_page(
     date_f   = load_font(36)
     header_f = load_font(22)
     cell_f   = load_font(20)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 6140b2f (testing)
     # כותרות עליונות
     _draw_centered(draw, "ניתוח חשיפות מהותיות בתיק אשראי – השוואה תקופתית", W // 2, 70,  title_f, (20, 20, 20))
     _draw_centered(draw, bucket_label,                                      W // 2, 120, sub_f,   (20, 20, 20))
@@ -1177,6 +1269,7 @@ def render_bad_distributions_page(
 
     # שמאל (נוכחי)
     yL = 230
+<<<<<<< HEAD
     yL = _draw_section(draw, left_x,  yL, w_tbl, "לווה יחיד",   sub_f, header_borrower, left_borrowers, header_f, cell_f, aligns, gap=40)
     yL = _draw_section(draw, left_x,  yL, w_tbl, "ענפים",       sub_f, header_sector,   left_sectors,   header_f, cell_f, aligns, gap=40)
     _  = _draw_section(draw, left_x,  yL, w_tbl, "קבוצת לווים", sub_f, header_group,    left_groups,    header_f, cell_f, aligns, gap=40)
@@ -1189,6 +1282,21 @@ def render_bad_distributions_page(
 
     return img
 
+=======
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "לווה יחיד",   sub_f, header_borrower, left_borrowers, header_f, cell_f, aligns)
+    yL = _draw_section(draw, left_x,  yL, w_tbl, "ענפים",       sub_f, header_sector,   left_sectors,   header_f, cell_f, aligns)
+    _  = _draw_section(draw, left_x,  yL, w_tbl, "קבוצת לווים", sub_f, header_group,    left_groups,    header_f, cell_f, aligns)
+
+    # ימין (קודם)
+    yR = 230
+    yR = _draw_section(draw, right_x, yR, w_tbl, "לווה יחיד",   sub_f, header_borrower, right_borrowers, header_f, cell_f, aligns)
+    yR = _draw_section(draw, right_x, yR, w_tbl, "ענפים",       sub_f, header_sector,   right_sectors,   header_f, cell_f, aligns)
+    _  = _draw_section(draw, right_x, yR, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns)
+
+    return img
+
+
+>>>>>>> 6140b2f (testing)
 # =========================
 # Main (unchanged except calling the new slides)
 # =========================
@@ -1292,7 +1400,11 @@ def main():
                     date_str=date_cur_str,
                 )
             )
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 6140b2f (testing)
         # שמירה
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
@@ -1303,6 +1415,7 @@ def main():
             
             
         exec_img.save(out_png)
+<<<<<<< HEAD
         # exec_img.save(out_pdf, save_all=True, append_images=[white_img, *tables_imgs, *bad_pages, *dist_pages])
         exec_img.save(
             out_pdf,
@@ -1316,6 +1429,9 @@ def main():
         ],
     )
 
+=======
+        exec_img.save(out_pdf, save_all=True, append_images=[white_img, *tables_imgs, *bad_pages, *dist_pages])
+>>>>>>> 6140b2f (testing)
         pdf_parts.append(out_pdf)
         print(f"CASE {case_id}: created {out_png}, {out_pdf}")
 

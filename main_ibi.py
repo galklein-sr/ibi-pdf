@@ -678,6 +678,7 @@ def metric_class_change_count(df_curr, df_prev):
     key = 'sec_id' if ('sec_id' in df_curr.columns and 'sec_id' in df_prev.columns) else None
     if key is None:
         return None
+
     def one_label_per_sec(df):
         s = (
             df[[key, 'debt_forum_type']]
@@ -692,15 +693,25 @@ def metric_class_change_count(df_curr, df_prev):
             .agg(lambda col: col.mode().iloc[0] if not col.mode().empty else col.iloc[0])
         )
         return s.sort_index()
+
     curr_labels = one_label_per_sec(df_curr)
     prev_labels = one_label_per_sec(df_prev)
     common_ids = curr_labels.index.intersection(prev_labels.index)
     if common_ids.empty:
         return 0
+
     aligned_curr = curr_labels.reindex(common_ids)
     aligned_prev = prev_labels.reindex(common_ids)
-    changes = (aligned_curr != aligned_prev).sum()
-    return int(changes)
+
+    # נספור רק אם גם קודם וגם נוכחי ב-BAD (לא כניסה/יציאה)
+    prev_bad = aligned_prev.isin(BAD_TYPES)
+    curr_bad = aligned_curr.isin(BAD_TYPES)
+    in_bad_both = prev_bad & curr_bad
+
+    # בתוך BAD, האם התווית (סוג ה-BAD) השתנתה?
+    changes_within_bad = (aligned_curr[in_bad_both] != aligned_prev[in_bad_both]).sum()
+    return int(changes_within_bad)
+
 
 #סה"כ ניירות בפיגור/מסופק
 def metric_late_or_delivered_count(df_case):
