@@ -60,7 +60,7 @@ def add_branding(
             logo = logo.resize((lw, target_h), Image.LANCZOS)
             img.paste(logo, (pad_left, pad_top), logo)
 
-    # --- פוטר ---
+    # --- Footer/About---
     if show_footer:                                   
         footer = _safe_open_rgba(FOOTER_PATH)
         if footer:
@@ -132,6 +132,26 @@ def _shrink_font_to_fit(draw, text, base_font, max_width, min_size=12):
         fitted = load_font(size)
     return fitted, t
 
+def infer_bucket_label(df: pd.DataFrame, default_label: str) -> str:
+    # נסה לאתר עמודה רלוונטית
+    cand = _find_col(
+        df,
+        ["bucket", "Bucket", "bucket_label", "טווח ארם", "ארם", "שם דלי", "רמת ארם", "ARM"]
+    )
+    if not cand or cand not in df.columns:
+        return default_label
+
+    s = df[cand].dropna().astype(str).str.strip()
+    if s.empty:
+        return default_label
+
+    # הערך הנפוץ ביותר
+    label = s.value_counts().idxmax()
+
+    # החזרה כמות־שהיא (אם בעמודה כבר רשום 'ארם עד 50' וכו')
+    return label or default_label
+
+
 def _draw_centered_fit(draw, text, cx, y_center, max_width, base_size=28, min_size=14, color=(20,20,20)):
     """
     מצייר טקסט ממורכז סביב y_center, ומקטין פונט עד שהטקסט נכנס לרוחב הנתון.
@@ -168,7 +188,7 @@ def _fit_text_to_width(draw, text, font, max_width, min_size=12):
 
 def _fit_or_ellipsis(draw, text, font, max_width, allow_shrink_pts=2):
     """
-    שומר על גודל הפונט כמעט קבוע; קודם כל מנסה לקצר עם …,
+    שומר על גודל הפונט כמעט קבוע; קודם כל מנסה לקצר עם 
     ורק אם גם תו אחד + … לא נכנס – מקטין עד 2pt לכל היותר.
     """
     t = "" if text is None else str(text)
@@ -210,7 +230,6 @@ def ellipsize(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont
         t = t[:-1]
     return t + "…"
 
-####### DOWN : START OF RECENT EDITS OF HEBREW WORDS #######
 def ellipsize_raw(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> str:
     """קיצור טקסט לרוחב נתון *בלי* fix_hebrew (משתמשים כשכבר עשינו עיבוד RTL קודם)."""
     t = str(text)
@@ -234,7 +253,6 @@ def _is_numeric_text(s: str) -> bool:
         return True
     except Exception:
         return False
-####### ABOVE : END OF RECENT EDITS OF HEBREW WORDS #######
 
 def _draw_text_fit(draw, text, x, y, w, h,
                    base_size=20, min_size=12,
@@ -285,7 +303,6 @@ def _text_center_in_rect(draw, text, font, rect, fill=(255,255,255)):
     y = t + (h - th)//2
     draw.text((x,y), text, font=font, fill=fill)
     
-    ######## new code for Deleting a table and adding a rectangle
 def _draw_segmented_selector(
     draw, cx, y, width, height, labels, font,
     active=0,
@@ -335,8 +352,7 @@ def _draw_segmented_selector(
         seg_right = right - int(active * seg_w)
         seg_left  = right - int((active + 1) * seg_w)
         draw.line([(seg_left + 8, bottom - 2), (seg_right - 8, bottom - 2)], fill=underline, width=3)
-    ####### end of the new code #######
-
+ 
 def _fmt_num(n, digits=2):
     try:
         v = float(n)
@@ -420,7 +436,7 @@ def _find_col(df, candidates):
         if c in df.columns:
             return c
     return None
-
+##
 def _ensure_num(df, cols):
     for c in cols:
         if c in df.columns:
@@ -616,7 +632,7 @@ def metrics_exec_summary(df_case: pd.DataFrame) -> dict:
         'bad_share_by_value': bad_share_by_value,
     }
 
-#אחוז מתיק האשראי הלא מוּחרג
+#אחוז מתיק האשראי הלא מוחרג
 def metric_excluded_bad_pct(df_case_curr: pd.DataFrame, df_case_prev: pd.DataFrame | None) -> tuple[float|None, float|None]:
     def calc(df_case: pd.DataFrame) -> float | None:
         if df_case is None or df_case.empty or 'sub_afik' not in df_case.columns:
@@ -1452,12 +1468,15 @@ def main():
                                        curr_late_or_delivered, prev_late_or_delivered)
 
         # ====== שלושת השקפים החדשים ======
-        case_bucket = {
-            16396: ["ארם עד 50"],
-            16397: ["ארם 50-60"],
-            16398: ["ארם 60 ומעלה"],
-        }
-        buckets_for_this_case = case_bucket.get(case_id, ["ארם עד 50"])
+        # case_bucket = {
+            # 16396: ["ארם עד 50"],
+            # 16397: ["ארם 50-60"],
+            # 16398: ["ארם 60 ומעלה"],
+            # 5257: ["המח/ר"],
+        # }
+        # buckets_for_this_case = case_bucket.get(case_id, ["ארם עד 50"])
+        bucket_label = infer_bucket_label(case_curr, default_label=account_name)
+        buckets_for_this_case = [bucket_label]
 
         tables_imgs = []
         bad_pages   = []
