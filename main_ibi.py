@@ -677,7 +677,7 @@ def metric_bad_entry_exit(df_case_curr: pd.DataFrame | None,
         for key_col in ('ISIN', 'שם נייר', 'SecurityID', 'מספר נייר'):
             if key_col in df.columns:
                 tmp = df[[key_col, 'debt_forum_type']].copy()
-                tmp['is_bad'] = tmp['debt_forום חוב'].isin(BAD_TYPES)
+                tmp['is_bad'] = tmp['debt_forum_type'].isin(BAD_TYPES)
                 g = tmp.groupby(key_col)['is_bad'].max()
                 return set(g.index[g])
         return set(df.index[df['debt_forum_type'].isin(BAD_TYPES)])
@@ -868,7 +868,7 @@ def render_white_slide(account_name_display: str,
             curr_class_changes, curr_late_or_delivered)
     return slide
 # =========================
-# NEW: accurate computations for the 3 new slides
+# accurate computations for the 3 new slides
 # =========================
 
 def _filter_aram_bucket(df, bucket_label: str):
