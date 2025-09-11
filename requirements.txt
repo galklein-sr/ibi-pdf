@@ -3,4 +3,4 @@ pandas==2.3.1
 python-bidi==0.6.6
 arabic-reshaper==3.0.0
 PyPDF2==3.0.1
-
+Openpyxl==3.1.5
