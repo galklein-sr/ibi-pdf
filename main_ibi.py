@@ -5,6 +5,7 @@ import arabic_reshaper
 from PyPDF2 import PdfMerger
 import sys, os
 from pathlib import Path
+import re  
 
 # =========================
 # Config
@@ -12,6 +13,7 @@ from pathlib import Path
 DATA_CURRENT_PATH = 'DataToPDF/Data.xlsx'
 DATA_PREV_PATH    = 'DataToPDF/DataOld.xlsx'
 DATA_PREV_PREV_PATH = 'DataToPDF/DataOld2Q.xlsx'
+CLIENTS_MAP_PATH  = 'DataToPDF/clients_cases.xlsx'
 SHEET_NAME        = 'Sheet1'
 TEMPLATE_IMAGE    = 'templates/template1.png'
 OUTPUT_DIR        = 'outputs'
@@ -38,7 +40,7 @@ def add_branding(
     img: Image.Image,
     show_logo=False,        
     show_footer=True,
-    logo_rel_h=0.08,      # גובה לוגו יחסי (קטן יותר כדי לא להפריע)
+    logo_rel_h=0.08,      # גובה לוגו יחסי
     footer_rel_h=0.045,   # גובה פוטר יחסי
     pad_left=22, pad_top=18, pad_bottom=22,
     wipe_footer_bg=False  # אם TRUE צובע רצועה בהירה לפני הדבקת הפוטר
@@ -133,7 +135,7 @@ def _shrink_font_to_fit(draw, text, base_font, max_width, min_size=12):
     return fitted, t
 
 def infer_bucket_label(df: pd.DataFrame, default_label: str) -> str:
-    # נסה לאתר עמודה רלוונטית
+    # מנסה לאתר עמודה רלוונטית
     cand = _find_col(
         df,
         ["bucket", "Bucket", "bucket_label", "טווח ארם", "ארם", "שם דלי", "רמת ארם", "ARM"]
@@ -148,7 +150,6 @@ def infer_bucket_label(df: pd.DataFrame, default_label: str) -> str:
     # הערך הנפוץ ביותר
     label = s.value_counts().idxmax()
 
-    # החזרה כמות־שהיא (אם בעמודה כבר רשום 'ארם עד 50' וכו')
     return label or default_label
 
 
@@ -194,13 +195,13 @@ def _fit_or_ellipsis(draw, text, font, max_width, allow_shrink_pts=2):
     t = "" if text is None else str(text)
     f = font
 
-    # 1) קודם: חתוך עם … בגודל המקורי
+    # 1) קודם כל מנסה לקצר עם … בלבד
     while t and draw.textbbox((0, 0), t + "…", font=f)[2] > max_width:
         t = t[:-1]
     if t:
         return f, (t + "…") if draw.textbbox((0, 0), t + "…", font=f)[2] <= max_width else t
 
-    # 2) אם אפילו תו אחד לא נכנס, הקטן מעט (עד 2pt)
+    # 2) אם אפילו תו אחד לא נכנס, מקטין מעט (עד 2pt)
     base = getattr(font, "size", 22)
     for size in range(base - 1, max(base - allow_shrink_pts, 8) - 1, -1):
         f2 = load_font(size)
@@ -379,7 +380,7 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         draw.rectangle([col_x, y, col_x + cw, y + head_h], fill=hfill)
         # מכווצים פונט עד שהכותרת נכנסת לרוחב התא (ללא ...):
         fit_font, fit_text = _shrink_font_to_fit(draw, h, header_font, cw - 12, min_size=14)
-        # מציירים ממורכז בתוך התא – שים לב: fit_text כבר RTL, אין לקרוא שוב fix_hebrew
+        # מציירים ממורכז בתוך התא – : fit_text כבר RTL
         hdr_rect = (col_x + 6, y + 6, col_x + cw - 6, y + head_h - 6)
         _text_center_in_rect(draw, fit_text, fit_font, hdr_rect, fill=htext)
         col_x += cw
@@ -426,6 +427,123 @@ def _draw_table_full(draw, x, y, w, headers, rows, header_font, cell_font, col_f
         cy += row_h
     return cy
 
+def load_client_cases(client_name: str) -> list[tuple[int, str | None]]:
+    """
+    קורא את קובץ המיפוי ומחזיר רשימה של (case_id, bucket_label_or_None) עבור הלקוח.
+    תומך ב-Excel (xlsx) עם גיליון CLIENTS_SHEET או בקובץ CSV באותו נתיב.
+    שמות עמודות נתמכים:
+      client / לקוח
+      case_id / מספר תיק
+      case_label / שם חשבון (לא חובה)
+    """
+    path = CLIENTS_MAP_PATH
+    if not os.path.exists(path):
+        print(f"[clients map] קובץ המיפוי לא נמצא: {path}")
+        return []
+
+    # קריאה: xlsx או csv
+    if path.lower().endswith(".xlsx"):
+        df = pd.read_excel(path, sheet_name=SHEET_NAME)
+    else:
+        df = pd.read_csv(path, encoding="utf-8", engine="python")
+
+    # מצא עמודות
+    col_client = _find_col(df, ["client", "לקוח"])
+    col_case   = _find_col(df, ["case_id", "מספר תיק"])
+    col_bucket = _find_col(df, ["case_label", "שם חשבון"])
+
+    if not col_client or not col_case:
+        print("[clients map] חסרות עמודות חובה (client/לקוח, case_id/מספר תיק).")
+        return []
+
+    df = df.copy()
+    df[col_client] = df[col_client].astype(str).map(_normalize_client_name)
+    df[col_case]   = pd.to_numeric(df[col_case], errors="coerce").astype("Int64")
+
+    target = _normalize_client_name(client_name)
+    sub = df[(df[col_client] == target) & df[col_case].notna()]
+
+    out: list[tuple[int, str | None]] = []
+    for _, row in sub.iterrows():
+        cid = int(row[col_case])
+        bl  = str(row[col_bucket]).strip() if col_bucket and pd.notna(row[col_bucket]) else None
+        if bl in ("", "nan", "None"):
+            bl = None
+        out.append((cid, bl))
+    return out
+
+def _slug_filename(name: str) -> str:
+    """
+    יוצר שם ידידותי לקובץ מהשם שניתן (שומר עברית, מוריד תווים בעייתיים).
+    דוגמאות: 'IBI השקעות' -> 'ibi_השקעות', 'ארם' -> 'ארם'
+    """
+    s = (name or "").strip().lower()
+    # שומר אותיות/ספרות/קו תחתי וגם תווים בעברית (יוניקוד 0590-05FF)
+    s = re.sub(r"[^\w\u0590-\u05FF]+", "_", s, flags=re.UNICODE)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or "client"
+
+def load_all_clients() -> list[dict]:
+    """
+    קורא את clients_cases.xlsx ומחזיר רשימה של לקוחות:
+      {
+        "key": str   (שם מנורמל להשוואות),
+        "display": str (שם תצוגה כפי שמופיע בקובץ),
+        "slug": str  (ידידותי לשם קובץ),
+        "pairs": List[Tuple[int, Optional[str]]]  ([(case_id, bucket_label_or_None), ...])
+      }
+    """
+    path = CLIENTS_MAP_PATH
+    if not os.path.exists(path):
+        print(f"[clients map] קובץ המיפוי לא נמצא: {path}")
+        return []
+
+    # קריאה: xlsx או csv
+    if path.lower().endswith(".xlsx"):
+        df = pd.read_excel(path, sheet_name=SHEET_NAME)
+    else:
+        df = pd.read_csv(path, encoding="utf-8", engine="python")
+
+    col_client = _find_col(df, ["client", "לקוח"])
+    col_case   = _find_col(df, ["case_id", "מספר תיק"])
+    col_bucket = _find_col(df, ["case_label", "שם חשבון"])  # לא חובה
+
+    if not col_client or not col_case:
+        print("[clients map] חסרות עמודות חובה (client/לקוח, case_id/מספר תיק).")
+        return []
+
+    df = df.copy()
+    df["_client_key"] = df[col_client].astype(str).map(_normalize_client_name)
+    df["_client_display"] = df[col_client].astype(str).str.strip()
+    df[col_case] = pd.to_numeric(df[col_case], errors="coerce").astype("Int64")
+
+    if col_bucket:
+        df["_bucket"] = df[col_bucket]
+    else:
+        df["_bucket"] = None
+
+    out = []
+    valid = df[df[col_case].notna()].copy()
+    for key, g in valid.groupby("_client_key"):
+        display = g["_client_display"].iloc[0]
+        pairs: list[tuple[int, str | None]] = []
+        for _, row in g.iterrows():
+            cid = int(row[col_case])
+            bl = None
+            if col_bucket and pd.notna(row["_bucket"]):
+                bl = str(row["_bucket"]).strip()
+                if bl in ("", "nan", "None"):
+                    bl = None
+            pairs.append((cid, bl))
+        out.append({
+            "key": key,
+            "display": display,
+            "slug": _slug_filename(display),
+            "pairs": pairs
+        })
+    return out
+
+
 # ==== small helpers ====
 def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont):
     bbox = draw.textbbox((0, 0), text, font=font)
@@ -467,6 +585,9 @@ def fmt_km(n: float, decimals: int = 2) -> str:
 def norm_case_series(s: pd.Series) -> pd.Series:
     s = s.astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
     return pd.to_numeric(s, errors='coerce').astype('Int64')
+
+def _normalize_client_name(s: str) -> str:
+    return (s or "").strip().lower()
 
 def load_quarter(path: str) -> pd.DataFrame | None:
     if not os.path.exists(path):
@@ -599,10 +720,10 @@ def _donut_config_for_bucket(bucket_label: str, df_curr: pd.DataFrame) -> dict:
             segs.append(("אחר", other))
         return segs
 
-    # === המיפוי לדונאטס בדיוק כמו באפיון/צילום ===
-    segments_geo        = _segments_by(group_col)         # חשיפה גאוגרפית ← קבוצת לווים
-    segments_collateral = _segments_by(sector_col)        # ביטחונות ← ענף
-    segments_liquidity  = _segments_by("__rating_label")  # סחירות ← דירוג
+    # === המיפוי לדונאטס ===
+    segments_geo        = _segments_by(group_col)         # חשיפה גאוגרפית - קבוצת לווים
+    segments_collateral = _segments_by(sector_col)        # ביטחונות - ענף
+    segments_liquidity  = _segments_by("__rating_label")  # סחירות - דירוג
 
     return {
         "geo":        segments_geo,
@@ -858,7 +979,7 @@ def render_white_slide(account_name_display: str,
     gap_stats = 32    # המרווח בין שורת הכרטיסים לבין תיבות הסטטיסטיקות (קטן יותר = יותר צמוד)
     stats_top_y = top_y + bh + gap_stats
 
-# לא לדרוס את אזור הפוטר – נשמור רווח מינימלי מלמטה
+# לא לדרוס את אזור הפוטר – שומר רווח מינימלי מלמטה
     safe_y = H - SAFE_BOTTOM
     stats_top_y = min(stats_top_y, safe_y - stats_h)
 
@@ -868,7 +989,7 @@ def render_white_slide(account_name_display: str,
             curr_class_changes, curr_late_or_delivered)
     return slide
 # =========================
-# accurate computations for the 3 new slides
+# accurate computations for the 3 next slides
 # =========================
 
 def _filter_aram_bucket(df, bucket_label: str):
@@ -903,11 +1024,11 @@ def _top3_for_group(df_case_full: pd.DataFrame, group_col: str) -> list[tuple[st
     else:
         df_ne = df_case_full.copy()
 
-    # --- אחוז מכלל התיק (מתוך הלא-מוחרג) ---
+    # אחוז מכלל התיק (מתוך הלא-מוחרג) 
     if pct_col and not df_ne.empty:
         s_total_pct = df_ne.groupby(group_col, dropna=False)[pct_col].sum()
     else:
-        # נפילה חכמה לרזרבה במקרה ואין העמודה – נחשב לפי value/total
+        # נפילה חכמה במקרה ואין את העמודה – מחושב לפי value/total
         if val_col and not df_ne.empty:
             total_val_ne = float(pd.to_numeric(df_ne[val_col], errors='coerce').fillna(0).sum())
             s_total_pct = (df_ne.groupby(group_col, dropna=False)[val_col]
@@ -916,7 +1037,7 @@ def _top3_for_group(df_case_full: pd.DataFrame, group_col: str) -> list[tuple[st
         else:
             s_total_pct = pd.Series(0.0, index=df_case_full.groupby(group_col, dropna=False).size().index)
 
-    # --- אחוז מתיק אשראי לא מוחרג (כבר היה נכון – נשאר) ---
+    # אחוז מתיק אשראי לא מוחרג 
     if val_col and not df_ne.empty:
         s_excl_val = (df_ne.groupby(group_col, dropna=False)[val_col]
                          .sum())
@@ -1017,7 +1138,7 @@ def render_bad_debts_page(account_name_display: str,
             ""
         ))
     else:
-        rows.append((fix_hebrew("מסופק"), "", "", "", "", "", "", "", ""))
+        # rows.append((fix_hebrew("מסופק"), "", "", "", "", "", "", "", ""))
         rows.append(("Total",  "", "", "", "", "", "", "", ""))
 
     # טבלה
@@ -1035,9 +1156,9 @@ def render_bad_debts_page(account_name_display: str,
     # הערה
     note = "נכון לתאריך הדוח. אין בתיק חשיפה נוספת לנכסי חוב או נכסים אחרים שהונפקו על ידי מנפיקים אלה"
     # _draw_centered(draw, note, W//2, end_y + 60, small_f, (30,30,30))
-    safe_y = H - SAFE_BOTTOM                  # קו עליון של אזור הפוטר
+    safe_y = 900 - SAFE_BOTTOM                  # קו עליון של אזור הפוטר
     note_y = min(end_y + 60, safe_y - 80)     # לא לגעת בפוטר; 80px ריווח לנשימה
-    _draw_centered(draw, note, W//2, note_y, small_f, (30,30,30))
+    _draw_centered(draw, note, 1600//2, note_y, small_f, (30,30,30))
 
     # סה\"כ אשראי לא מוחרג בתחתית (של כלל המוחרגים, לא רק BAD)
     bottom_text = "סה\"כ אשראי לא מוחרג"
@@ -1046,9 +1167,9 @@ def render_bad_debts_page(account_name_display: str,
     val = _fmt_num(total_ne_value, 0)
     tb2 = draw.textbbox((0,0), val, font=small_f)
     gap = 35
-    cx = W//2 - ( (tb1[2]-tb1[0]) + gap + (tb2[2]-tb2[0]) )//2
+    cx = 1600//2 - ( (tb1[2]-tb1[0]) + gap + (tb2[2]-tb2[0]) )//2
     # yb = H - 90
-    safe_y = H - SAFE_BOTTOM
+    safe_y = 900 - SAFE_BOTTOM
     yb = safe_y - 30  
     
     draw.text((cx, yb), bt, font=small_f, fill=(20,20,20))
@@ -1166,7 +1287,7 @@ def render_bad_debts_page_alt(
     headers_mid   = ["אחוז מאשראי לא מוחרג","שווי נייר","תאור קבוצת לווים"]
     headers_right = ["אחוז מאשראי לא מוחרג","שווי נייר","דרוג קבוע לנייר"]
     # fracs = [0.28, 0.22, 0.50]
-    fracs = [0.31, 0.21, 0.48] # הסכום הוא 1.0 ובכך פתרתי את חריגת טקסט מהמקום שלו
+    fracs = [0.31, 0.21, 0.48] # הסכום הוא 1.0 ובכך נפתרה חריגת טקסט מהמקום שלו
 
     _draw_table_full(draw, x_left,  y0, w_small, headers_left,  rows_left,  header_f, cell_f, fracs)
     _draw_table_full(draw, x_mid,   y0, w_small, headers_mid,   rows_mid,   header_f, cell_f, fracs)
@@ -1365,10 +1486,10 @@ def render_bad_distributions_page(
     hL2 = _estimate_section_height(draw, sub_f, header_f, cell_f, left_sectors)
     hL3 = _estimate_section_height(draw, sub_f, header_f, cell_f, left_groups)
 
-# כמה מקום באמת יש לנו עד הפוטר
+# כמה מקום יש עד הפוטר
     safe_height_L = (H - SAFE_BOTTOM) - TOP_START
 
-# מתחילים עם רווח ברירת מחדל; אם לא נכנס — מצמצמים באופן אחיד
+# מתחיל עם רווח ברירת מחדל; אם לא נכנס — מצמצמים באופן אחיד
     gapL = GAP_DEFAULT
     totalL = hL1 + hL2 + hL3 + 2 * gapL
     if totalL > safe_height_L:
@@ -1379,7 +1500,7 @@ def render_bad_distributions_page(
     yL2 = yL1 + hL1 + gapL
     yL3 = yL2 + hL2 + gapL
 
-# ודואגים שהסקשן האחרון לא יחרוג מתחת ל-SAFE_BOTTOM
+# וידוא שהסקשן האחרון לא יחרוג מתחת ל-SAFE_BOTTOM
     max_yL3 = H - SAFE_BOTTOM - hL3
     if yL3 > max_yL3:
         shift = yL3 - max_yL3
@@ -1422,24 +1543,16 @@ def render_bad_distributions_page(
     _draw_section(draw, right_x, yR3, w_tbl, "קבוצת לווים", sub_f, header_group,    right_groups,    header_f, cell_f, aligns)
     return img
 
-# =========================
-# Main (unchanged except calling the new slides)
-# =========================
-def main():
-    ids = [int(a) for a in sys.argv[1:]] if len(sys.argv) > 1 else DEFAULT_IDS
-    df_curr = load_quarter(DATA_CURRENT_PATH)
-    df_prev = load_quarter(DATA_PREV_PATH)
-    df_prev_prev = load_quarter(DATA_PREV_PREV_PATH)
 
-    if df_curr is None:
-        print("לא נמצא או לא תקין קובץ Data.xlsx")
-        return
 
-    df_curr['__case'] = norm_case_series(df_curr['case_id'])
-    if df_prev is not None:
-        df_prev['__case'] = norm_case_series(df_prev['case_id'])
-
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+def _generate_reports_for_selection(
+    ids: list[int],
+    case_to_buckets: dict[int, list[str]],
+    df_curr: pd.DataFrame,
+    df_prev: pd.DataFrame | None,
+    df_prev_prev: pd.DataFrame | None,
+    combined_output_path: str
+):
     pdf_parts = []
 
     for case_id in ids:
@@ -1467,27 +1580,25 @@ def main():
         curr_late_or_delivered = metric_late_or_delivered_count(case_curr)
         prev_late_or_delivered = metric_late_or_delivered_count(case_prev)
 
-        # שקפים קיימים
         exec_img  = render_exec_slide(TEMPLATE_IMAGE, account_name, exec_metrics)
-        white_img = render_white_slide(account_name,
-                                       curr_excl_bad_pct, prev_excl_bad_pct,
-                                       curr_total_bad_pct, prev_total_bad_pct,
-                                       curr_bad_count, prev_bad_count,
-                                       curr_bad_entries, prev_bad_entries,
-                                       curr_bad_exits, prev_bad_exits,
-                                       curr_class_changes, prev_class_changes,
-                                       curr_late_or_delivered, prev_late_or_delivered)
 
-        # ====== שלושת השקפים החדשים ======
-        # case_bucket = {
-            # 16396: ["ארם עד 50"],
-            # 16397: ["ארם 50-60"],
-            # 16398: ["ארם 60 ומעלה"],
-            # 5257: ["המח/ר"],
-        # }
-        # buckets_for_this_case = case_bucket.get(case_id, ["ארם עד 50"])
-        bucket_label = infer_bucket_label(case_curr, default_label=account_name)
-        buckets_for_this_case = [bucket_label]
+        white_img = render_white_slide(
+            account_name,
+            curr_excl_bad_pct, prev_excl_bad_pct,
+            curr_total_bad_pct, prev_total_bad_pct,
+            curr_bad_count, prev_bad_count,
+            curr_bad_entries, prev_bad_entries,
+            curr_bad_exits,   prev_bad_exits,
+            curr_class_changes, prev_class_changes,
+            curr_late_or_delivered, prev_late_or_delivered
+        )
+
+        # בחירת בקטים
+        if case_id in case_to_buckets and case_to_buckets[case_id]:
+            buckets_for_this_case = case_to_buckets[case_id]
+        else:
+            inferred = infer_bucket_label(case_curr, default_label=account_name)
+            buckets_for_this_case = [inferred]
 
         tables_imgs = []
         bad_pages   = []
@@ -1497,19 +1608,16 @@ def main():
         date_prev_str = "31/03/2025"
 
         for bucket_label in buckets_for_this_case:
-        # 1) השוואה תקופתית: שמאל=נוכחי, ימין=קודם
             dist_pages.append(
                 render_bad_distributions_page(
                     account_name_display=account_name,
                     bucket_label=bucket_label,
                     df_curr=case_curr,
-                    df_prev=case_prev,          
-                    date_curr=date_cur_str,     # תאריך נוכחי
-                    date_prev=date_prev_str,    # תאריך קודם
+                    df_prev=case_prev,
+                    date_curr=date_cur_str,
+                    date_prev=date_prev_str,
                 )
             )
-
-        # 2) תיאור חובות בעייתיים (הראשונה)
             bad_pages.append(
                 render_bad_debts_page(
                     account_name_display=account_name,
@@ -1518,8 +1626,6 @@ def main():
                     date_str=date_cur_str,
                 )
             )
-
-        # 3) תיאור חובות בעייתיים – השקופית השנייה (הטבלאית)
             bad_pages.append(
                 render_bad_debts_page_alt(
                     account_name_display=account_name,
@@ -1528,7 +1634,7 @@ def main():
                     date_str=date_cur_str,
                 )
             )
-            
+
         for _img in [white_img, *dist_pages, *tables_imgs, *bad_pages]:
             add_branding(
                 _img,
@@ -1537,27 +1643,117 @@ def main():
                 logo_rel_h=0.07, footer_rel_h=0.038,
                 pad_bottom=26, wipe_footer_bg=True
             )
-        # שמירה
+
         out_png = os.path.join(OUTPUT_DIR, f'output_{case_id}.png')
         out_pdf = os.path.join(OUTPUT_DIR, f'output_{case_id}.pdf')
         exec_img.save(out_png)
         exec_img.save(out_pdf, save_all=True, append_images=[white_img, *dist_pages, *tables_imgs, *bad_pages])
         pdf_parts.append(out_pdf)
         print(f"CASE {case_id}: created {out_png}, {out_pdf}")
-        
+
     if pdf_parts:
         merger = PdfMerger()
         for p in pdf_parts:
             merger.append(p)
-        merged_path = os.path.join(OUTPUT_DIR, 'combined_reports.pdf')
-        merger.write(merged_path)
+        merger.write(combined_output_path)
         merger.close()
-        print(f"created merged PDF: {merged_path}")
+        print(f"created merged PDF: {combined_output_path}")
     else:
         print("did not create any PDF files.")
-        
+
     print("LOGO exists:", Path(LOGO_PATH).exists(), LOGO_PATH)
     print("FOOTER exists:", Path(FOOTER_PATH).exists(), FOOTER_PATH)
+
+
+# =========================
+# Main 
+# =========================
+def main():
+    raw_args = sys.argv[1:]
+
+    df_curr = load_quarter(DATA_CURRENT_PATH)
+    df_prev = load_quarter(DATA_PREV_PATH)
+    df_prev_prev = load_quarter(DATA_PREV_PREV_PATH)
+
+    if df_curr is None:
+        print("לא נמצא או לא תקין קובץ Data.xlsx")
+        return
+
+    df_curr['__case'] = norm_case_series(df_curr['case_id'])
+    if df_prev is not None:
+        df_prev['__case'] = norm_case_series(df_prev['case_id'])
+    if df_prev_prev is not None:
+        df_prev_prev['__case'] = norm_case_series(df_prev_prev['case_id'])
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # ===== מצב 1: הועברו מספרי תיקים מפורשים (התנהגות ישנה) =====
+    if raw_args and all(a.isdigit() for a in raw_args):
+        ids = [int(a) for a in raw_args]
+        case_to_buckets: dict[int, list[str]] = {}
+        out_path = os.path.join(OUTPUT_DIR, "combined_reports.pdf")
+        _generate_reports_for_selection(
+            ids=ids,
+            case_to_buckets=case_to_buckets,
+            df_curr=df_curr, df_prev=df_prev, df_prev_prev=df_prev_prev,
+            combined_output_path=out_path
+        )
+        return
+
+    # ===== מצב 2: הועבר טקסט — שם לקוח בודד =====
+    if raw_args and not all(a.isdigit() for a in raw_args):
+        client_name = " ".join(raw_args).strip()
+        pairs = load_client_cases(client_name)  # [(case_id, bucket_label?)]
+        if not pairs:
+            print(f"לא נמצאו תיקים ללקוח '{client_name}' בקובץ המיפוי.")
+            return
+        ids = [cid for cid, _ in pairs]
+        case_to_buckets: dict[int, list[str]] = {}
+        for cid, bl in pairs:
+            if bl:
+                case_to_buckets.setdefault(cid, []).append(bl)
+
+        slug = _slug_filename(client_name)
+        out_path = os.path.join(OUTPUT_DIR, f"combined_reports_{slug}.pdf")
+
+        _generate_reports_for_selection(
+            ids=ids,
+            case_to_buckets=case_to_buckets,
+            df_curr=df_curr, df_prev=df_prev, df_prev_prev=df_prev_prev,
+            combined_output_path=out_path
+        )
+        return
+
+    # ===== מצב 3: לא הועברו ארגומנטים — עבור על כל הלקוחות מהמיפוי =====
+    clients = load_all_clients()
+    if clients:
+        for cli in clients:
+            ids = [cid for cid, _ in cli["pairs"]]
+            case_to_buckets: dict[int, list[str]] = {}
+            for cid, bl in cli["pairs"]:
+                if bl:
+                    case_to_buckets.setdefault(cid, []).append(bl)
+
+            out_path = os.path.join(OUTPUT_DIR, f"combined_reports_{cli['slug']}.pdf")
+            print(f"[{cli['display']}] building {out_path} ...")
+
+            _generate_reports_for_selection(
+                ids=ids,
+                case_to_buckets=case_to_buckets,
+                df_curr=df_curr, df_prev=df_prev, df_prev_prev=df_prev_prev,
+                combined_output_path=out_path
+            )
+        return
+
+    # ===== גיבוי: אין מיפוי — נשתמש ב־DEFAULT_IDS כמו קודם =====
+    print("[clients map] לא נמצא/ריק — חזרה ל־DEFAULT_IDS")
+    ids = DEFAULT_IDS[:]
+    _generate_reports_for_selection(
+        ids=ids,
+        case_to_buckets={},
+        df_curr=df_curr, df_prev=df_prev, df_prev_prev=df_prev_prev,
+        combined_output_path=os.path.join(OUTPUT_DIR, "combined_reports.pdf")
+    )
 
 if __name__ == "__main__":
     main()
